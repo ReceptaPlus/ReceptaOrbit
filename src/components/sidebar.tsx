@@ -12,11 +12,11 @@ import {
 } from "@/components/icons";
 
 const NAV = [
-  { href: "/app", label: "Visão Geral", exact: true, icon: IconDashboard },
-  { href: "/app/conversas", label: "Conversas", icon: IconChat, badge: 2 },
-  { href: "/app/vendas", label: "Vendas", icon: IconCart, badge: 1 },
-  { href: "/app/clientes", label: "Clientes", icon: IconUsers },
-  { href: "/app/configuracoes", label: "Configurações", icon: IconSettings },
+  { href: "/dashboard", label: "Visão Geral", exact: true, icon: IconDashboard },
+  { href: "/conversas", label: "Conversas", icon: IconChat, badge: 2 },
+  { href: "/vendas", label: "Vendas", icon: IconCart, badge: 1 },
+  { href: "/clientes", label: "Clientes", icon: IconUsers },
+  { href: "/configuracoes", label: "Configurações", icon: IconSettings },
 ];
 
 export function Sidebar() {

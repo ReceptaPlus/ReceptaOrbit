@@ -10,10 +10,10 @@ import {
 } from "@/components/icons";
 
 const TABS = [
-  { href: "/app", label: "Geral", exact: true, icon: IconDashboard },
-  { href: "/app/conversas", label: "Conversas", icon: IconChat },
-  { href: "/app/vendas", label: "Vendas", icon: IconCart, badge: 1 },
-  { href: "/app/configuracoes", label: "Mais", icon: IconMore },
+  { href: "/dashboard", label: "Geral", exact: true, icon: IconDashboard },
+  { href: "/conversas", label: "Conversas", icon: IconChat },
+  { href: "/vendas", label: "Vendas", icon: IconCart, badge: 1 },
+  { href: "/configuracoes", label: "Mais", icon: IconMore },
 ];
 
 export function BottomTabs() {
