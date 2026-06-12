@@ -1,0 +1,11 @@
+﻿{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "orbit-web",
+      "runtimeExecutable": "C:\\Users\\UNKNOW~1\\BEM-PO~1\\RECEPT~3\\dev.bat",
+      "runtimeArgs": [],
+      "port": 3000
+    }
+  ]
+}
