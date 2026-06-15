@@ -11,6 +11,7 @@ import {
   IconUser,
   IconUsers,
 } from "@/components/icons";
+import { Logo } from "@/components/brand/logo";
 
 const NAV = [
   { href: "/dashboard", label: "Visão Geral", exact: true, icon: IconDashboard },
@@ -29,14 +30,10 @@ export function Sidebar() {
                  flex-col min-h-screen sticky top-0 max-h-screen transition-[width]"
       aria-label="Navegação principal"
     >
-      {/* Marca */}
-      <div className="px-3 xl:px-5 py-6 flex items-center gap-2.5 justify-center xl:justify-start">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-400 flex items-center justify-center shrink-0 shadow-sm">
-          <span className="text-white font-display font-bold text-sm leading-none">R</span>
-        </div>
-        <span className="hidden xl:block text-white font-semibold tracking-tight font-display text-subtitle">
-          Recepta Orbit
-        </span>
+      {/* Marca — logo oficial, versão negativa (creme sobre escuro) */}
+      <div className="px-3 xl:px-5 py-6 flex items-center justify-center xl:justify-start text-[#FFF5D9]">
+        <Logo variant="mark" size={30} className="xl:hidden" />
+        <Logo variant="wordmark" size={26} className="hidden xl:inline-flex" />
       </div>
 
       {/* Navegação */}

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandBanner } from "@/components/brand/brand-banner";
+import { Logo } from "@/components/brand/logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,58 +16,30 @@ export default function LoginPage() {
 
   return (
     <main className="flex-1 grid lg:grid-cols-2 min-h-screen">
-      {/* Hero — degradê do manual (brand-500 → brand-400) + grid curvado */}
-      <section className="hidden lg:flex relative flex-col justify-between p-12 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-400 text-white">
-        <svg
-          className="absolute inset-0 w-full h-full opacity-15 pointer-events-none"
-          viewBox="0 0 600 800"
-          fill="none"
-          aria-hidden
+      {/* Hero — banner institucional oficial (foto real + overlay + pattern + slogan) */}
+      <section className="hidden lg:block relative p-3">
+        <BrandBanner
+          image="pharmacist"
+          pattern="grid"
+          title="A receita certa para farmácias."
+          subtitle="Conversas do WhatsApp viram dados de venda, atribuição de campanha e clientes recorrentes — com previsibilidade, não promessas."
+          className="h-full"
         >
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <path
-              key={i}
-              d={`M-50 ${120 + i * 130} Q 300 ${40 + i * 130} 650 ${150 + i * 130}`}
-              stroke="white"
-              strokeWidth="1.5"
-            />
-          ))}
-        </svg>
-
-        <div className="relative flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-            <span className="font-display font-bold text-lg">R</span>
+          <div className="text-[#FFF5D9] mb-auto">
+            <Logo variant="wordmark" size={28} />
           </div>
-          <span className="font-display font-semibold text-title">Recepta Orbit</span>
-        </div>
-
-        <div className="relative max-w-md">
-          <h2 className="font-display font-bold text-display-lg leading-tight">
-            A receita certa para farmácias.
-          </h2>
-          <p className="mt-4 text-subtitle text-white/85 leading-relaxed">
-            Conversas do WhatsApp viram dados de venda, atribuição de campanha e
-            clientes recorrentes — com previsibilidade, não promessas.
-          </p>
-        </div>
-
-        <p className="relative text-caption text-white/70">
-          Crescimento previsível para farmácias · Recepta
-        </p>
+        </BrandBanner>
       </section>
 
       {/* Formulário */}
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-brand-400 flex items-center justify-center">
-              <span className="text-white font-display font-bold">R</span>
-            </div>
-            <span className="font-display font-semibold text-title tracking-tight">Recepta Orbit</span>
+          <div className="lg:hidden mb-8 text-ink">
+            <Logo variant="wordmark" size={28} />
           </div>
 
           <h1 className="font-display text-display font-bold">Entre na sua farmácia</h1>
-          <p className="text-body text-neutral-600 mt-1.5 mb-8">
+          <p className="text-body text-secondary mt-1.5 mb-8">
             Acesso criado pela equipe Recepta.
           </p>
 

@@ -116,11 +116,80 @@
   --spacing-topbar: 56px;
 }
 
+/* ==========================================================================
+   Dark Premium — aplicação da paleta oficial (preto estrutural dominante).
+   Sobrescreve os tokens-alias; componentes herdam sem refatorar.
+   Mesma paleta do manual: nenhuma cor de marca nova. Elevações = tints
+   quentes derivados do #0A0D0C. Texto secundário = creme-dim (AA), pois
+   #695C57 reprova AA sobre fundo escuro (~3.4:1).
+   ========================================================================== */
+.dark {
+  /* superfícies (body mais escuro; sidebar/cards ligeiramente mais claros) */
+  --color-cream-100: #0A0D0C;   /* canvas / body */
+  --color-cream:     #0A0D0C;
+  --color-cream-50:  #14130F;   /* surface-1 */
+  --color-cream-200: #1C1A14;   /* surface-2 */
+  --color-card:      #14130F;   /* cards — elevação sutil sobre o canvas */
+  --color-subtle:    #1C1A14;   /* hover / faixas */
+
+  /* texto */
+  --color-ink:        #FFF5D9;  /* texto principal (creme) */
+  --color-ink-900:    #FFF5D9;
+  --color-ink-700:    #FFF5D9;
+  --color-secondary:  #B8B0A0;  /* creme-dim — AA (~7.5:1) */
+  --color-muted:      #8C857A;  /* metadados — AA large/decorativo */
+
+  /* bordas / divisores (creme translúcido — baixo contraste) */
+  --color-line:        rgba(255, 245, 217, 0.10);
+  --color-line-subtle: rgba(255, 245, 217, 0.06);
+
+  /* marca (laranja claro como acento de texto p/ contraste) */
+  --color-primary-light: rgba(212, 67, 44, 0.16);
+
+  /* sidebar — ligeiramente mais clara que o body */
+  --color-sidebar:        #14130F;
+  --color-sidebar-accent: #24211A;
+  --color-sidebar-text:   #B8B0A0;
+
+  /* semantic chips — tints translúcidos + texto claro (AA no dark) */
+  --color-success-bg:  rgba(111, 175, 143, 0.16);
+  --color-success-text:#8FCBAE;
+  --color-warning-bg:  rgba(217, 112, 85, 0.16);
+  --color-warning-text:#E08E70;
+  --color-danger-bg:   rgba(212, 67, 44, 0.18);
+  --color-danger-text: #E8836E;
+  --color-info-bg:     rgba(120, 150, 210, 0.16);
+  --color-info-text:   #9DBDEE;
+
+  /* shadcn semantic mapping (dark) */
+  --color-background:         #0A0D0C;
+  --color-foreground:         #FFF5D9;
+  --color-card-foreground:    #FFF5D9;
+  --color-popover:            #1C1A14;
+  --color-popover-foreground: #FFF5D9;
+  --color-muted-foreground:   #B8B0A0;
+  --color-accent:             #24211A;
+  --color-accent-foreground:  #FFF5D9;
+  --color-border:             rgba(255, 245, 217, 0.10);
+  --color-input:              rgba(255, 245, 217, 0.14);
+}
+
 body {
   background: var(--color-cream-100);
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Sombras no dark: elevação por escuro + borda creme reforça separação */
+.dark .shadow-xs { box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+.dark .shadow-md { box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+.dark .shadow-lg { box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+
+/* Shimmer de loading (feedback funcional, não decorativo) */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
 }
 
 /* Números tabulares em dados (padrão Stripe) */

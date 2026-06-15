@@ -51,18 +51,18 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-3">
-      <div className="bg-card rounded-xl border border-line overflow-x-auto">
+      <div className="bg-card rounded-xl border border-line overflow-x-auto shadow-xs">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="hover:bg-transparent">
+              <TableRow key={hg.id} className="hover:bg-transparent bg-subtle border-b border-line">
                 {hg.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={cn(
-                      "text-xs text-secondary whitespace-nowrap",
-                      header.column.getCanSort() && "cursor-pointer select-none"
-                    )}
+                    className={
+                      "text-caption font-medium uppercase tracking-wide text-secondary whitespace-nowrap h-11 " +
+                      (header.column.getCanSort() ? "cursor-pointer select-none hover:text-ink transition-colors" : "")
+                    }
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -78,10 +78,19 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   className={cn(
-                    onRowClick && "cursor-pointer",
+                    "h-12 border-b border-line-subtle tabular-nums",
+                    onRowClick &&
+                      "cursor-pointer relative hover:bg-subtle before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 before:bg-primary before:opacity-0 hover:before:opacity-100 before:transition-opacity",
                     rowClassName?.(row.original)
                   )}
+                  tabIndex={onRowClick ? 0 : undefined}
                   onClick={() => onRowClick?.(row.original)}
+                  onKeyDown={(e) => {
+                    if (onRowClick && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      onRowClick(row.original);
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -91,9 +100,10 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-secondary">
-                  Nenhum resultado.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <p className="font-display font-semibold text-subtitle">Nenhum resultado</p>
+                  <p className="text-small text-secondary mt-1">Ajuste os filtros ou a busca.</p>
                 </TableCell>
               </TableRow>
             )}
@@ -102,7 +112,7 @@ export function DataTable<TData, TValue>({
       </div>
       {table.getPageCount() > 1 && (
         <div className="flex items-center justify-end gap-2">
-          <span className="text-xs text-secondary">
+          <span className="text-caption text-secondary tabular-nums">
             Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
           </span>
           <Button
