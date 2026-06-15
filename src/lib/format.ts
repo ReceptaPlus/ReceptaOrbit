@@ -22,3 +22,22 @@ export function initials(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+export function formatRelative(iso: string): string {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "Agora";
+  if (diffMin < 60) return `há ${diffMin}min`;
+
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `há ${diffH}h`;
+
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "Ontem";
+  if (diffD < 30) return `há ${diffD} dias`;
+
+  return formatDate(iso);
+}

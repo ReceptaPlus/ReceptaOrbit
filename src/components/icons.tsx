@@ -60,6 +60,23 @@ export function IconMore({ size = 18, className }: IconProps) {
   );
 }
 
+export function IconUser({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <circle cx="12" cy="8" r="4.5" />
+      <path d="M4 20a8 8 0 0 1 16 0v1H4v-1Z" />
+    </svg>
+  );
+}
+
+export function IconShield({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2L4 6v5c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4Zm-1 14.5l-3.5-3.5 1.41-1.41L11 13.67l5.09-5.09L17.5 10 11 16.5Z" />
+    </svg>
+  );
+}
+
 export function IconLogout({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>

@@ -8,6 +8,7 @@ import {
   IconDashboard,
   IconLogout,
   IconSettings,
+  IconUser,
   IconUsers,
 } from "@/components/icons";
 
@@ -86,13 +87,24 @@ export function Sidebar() {
             <p className="text-micro truncate">antonio@dspaulo.com.br</p>
           </div>
         </div>
-        <Link
-          href="/login"
-          className="mt-4 hidden xl:flex items-center gap-2 text-caption hover:text-white transition-colors"
-        >
-          <IconLogout size={14} />
-          Sair
-        </Link>
+        <div className="mt-4 hidden xl:flex flex-col gap-2">
+          <Link
+            href="/conta/perfil"
+            className={`flex items-center gap-2 text-caption transition-colors ${
+              pathname.startsWith("/conta") ? "text-white" : "hover:text-white"
+            }`}
+          >
+            <IconUser size={14} />
+            Minha Conta
+          </Link>
+          <Link
+            href="/login"
+            className="flex items-center gap-2 text-caption hover:text-white transition-colors"
+          >
+            <IconLogout size={14} />
+            Sair
+          </Link>
+        </div>
       </div>
     </aside>
   );

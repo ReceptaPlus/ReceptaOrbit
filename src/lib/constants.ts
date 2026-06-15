@@ -79,4 +79,7 @@ export const ROUTES = {
   clientes: "/clientes",
   cliente: (id: string) => `/clientes/${id}`,
   configuracoes: "/configuracoes/usuarios",
+  conta: "/conta/perfil",
+  contaPerfil: "/conta/perfil",
+  contaSeguranca: "/conta/seguranca",
 } as const;
