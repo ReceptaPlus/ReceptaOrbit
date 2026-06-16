@@ -1,0 +1,33 @@
+{
+  "name": "@recepta/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Recepta Orbit — backend (Fase 1: fundação identity/tenancy/RBAC/auditoria)",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/client": "^6.4.1",
+    "dotenv": "^16.4.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prisma": "^6.4.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}

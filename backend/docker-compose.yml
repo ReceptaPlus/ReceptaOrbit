@@ -1,0 +1,23 @@
+# Recepta Orbit — infra local (Fase 1: só Postgres).
+# orbit-web e orbit-worker entram nas fases seguintes.
+services:
+  orbit-postgres:
+    image: postgres:16
+    container_name: orbit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_PASSWORD: orbit
+      POSTGRES_DB: recepta_orbit
+    ports:
+      - "5432:5432"
+    volumes:
+      - orbit-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit -d recepta_orbit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  orbit-pgdata:

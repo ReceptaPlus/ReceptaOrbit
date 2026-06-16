@@ -1,0 +1,241 @@
+// Recepta Orbit — Schema Prisma · FASE 1 (fundação)
+// Escopo: identidade, multi-tenancy, RBAC, primeiro acesso, termos/privacidade, auditoria.
+// Fora de escopo (Fases 2-5): WhatsApp, contatos, conversas, mensagens, IA, vendas, atribuição.
+// Autoridade: docs/DOMAIN-MODEL.md + docs/CONTRATOS-FRONTEND.md (congelados) +
+// frontend/src/types/domain.ts. Convenção: model PascalCase, coluna/tabela snake_case via @map/@@map.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────
+
+enum PharmacyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlanType {
+  START
+  PRO
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TenantRole {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum PlatformRole {
+  PLATFORM_ADMIN
+  PLATFORM_SUPPORT
+}
+
+enum LegalDocumentType {
+  TERMS_OF_USE
+  PRIVACY_POLICY
+}
+
+enum ActorType {
+  USER
+  AI
+  SYSTEM
+}
+
+// Lista congelada (CONTRATOS-FRONTEND Parte 1). Nem toda ação é usada na Fase 1,
+// mas o enum nasce completo para evitar migrações repetidas de enum nas próximas fases.
+enum AuditAction {
+  SALE_CONFIRMED
+  SALE_REJECTED
+  SALE_REFUNDED
+  SALE_VALUE_CORRECTED
+  CLASSIFICATION_CORRECTED
+  USER_INVITED
+  INVITE_CANCELLED
+  INVITE_RESENT
+  MEMBERSHIP_SUSPENDED
+  MEMBERSHIP_REACTIVATED
+  WHATSAPP_CONNECTED
+  WHATSAPP_DISCONNECTED
+  AI_THRESHOLD_CHANGED
+  PHARMACY_UPDATED
+  PHARMACY_CREATED
+}
+
+// ── Tenancy ────────────────────────────────────────────────────────────────
+
+model Pharmacy {
+  id                     String         @id @default(uuid()) @db.Uuid
+  tradeName              String         @map("trade_name")
+  legalName              String         @map("legal_name")
+  cnpj                   String         @unique
+  slug                   String         @unique
+  timezone               String         @default("America/Sao_Paulo")
+  plan                   PlanType       @default(START)
+  status                 PharmacyStatus @default(ACTIVE)
+  aiAutoConfirmThreshold Float          @default(0.85) @map("ai_auto_confirm_threshold")
+  aiSummaryLanguage      String         @default("pt-BR") @map("ai_summary_language")
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  @@map("pharmacies")
+}
+
+// ── Identity & Access ────────────────────────────────────────────────────────
+
+// User é identidade GLOBAL (não pertence a tenant). Vínculo com farmácia = Membership.
+model User {
+  id                 String     @id @default(uuid()) @db.Uuid
+  name               String
+  email              String     @unique
+  passwordHash       String?    @map("password_hash") // null até o 1º acesso (define senha)
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean    @default(true) @map("must_change_password")
+  sessionVersion     Int        @default(0) @map("session_version") // incrementa → invalida sessões
+  lastLoginAt        DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  platformStaff      PlatformStaff?
+  memberships        Membership[]          @relation("MembershipUser")
+  invitedMemberships Membership[]          @relation("MembershipInvitedBy")
+  invitations        UserInvitation[]      @relation("InvitationUser")
+  createdInvitations UserInvitation[]      @relation("InvitationCreatedBy")
+  legalAcceptances   UserLegalAcceptance[]
+
+  @@map("users")
+}
+
+// Papéis de plataforma — separados do tenant (anti-pattern 4 do DOMAIN-MODEL).
+model PlatformStaff {
+  userId    String       @id @map("user_id") @db.Uuid
+  role      PlatformRole
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("platform_staff")
+}
+
+// Vínculo User×Pharmacy×papel — é ELE que é convidado/suspenso.
+model Membership {
+  id              String           @id @default(uuid()) @db.Uuid
+  pharmacyId      String           @map("pharmacy_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  role            TenantRole
+  status          MembershipStatus @default(INVITED)
+  invitedByUserId String?          @map("invited_by_user_id") @db.Uuid
+  inviteExpiresAt DateTime?        @map("invite_expires_at") @db.Timestamptz
+  lastAccessAt    DateTime?        @map("last_access_at") @db.Timestamptz
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  pharmacy  Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  user      User     @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User?    @relation("MembershipInvitedBy", fields: [invitedByUserId], references: [id])
+
+  @@unique([pharmacyId, userId])
+  @@index([userId])
+  @@index([pharmacyId])
+  @@map("pharmacy_memberships")
+}
+
+// Convite de 1º acesso — armazena apenas HASH do token; uso único; expira.
+model UserInvitation {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash")
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz
+  usedAt          DateTime? @map("used_at") @db.Timestamptz
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User @relation("InvitationUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("InvitationCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([userId])
+  @@map("user_invitations")
+}
+
+// ── Legal (LGPD) ─────────────────────────────────────────────────────────────
+
+model LegalDocument {
+  id          String            @id @default(uuid()) @db.Uuid
+  type        LegalDocumentType
+  version     String
+  contentUrl  String            @map("content_url")
+  contentHash String            @map("content_hash")
+  active      Boolean           @default(true)
+  publishedAt DateTime          @map("published_at") @db.Timestamptz
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  acceptances UserLegalAcceptance[]
+
+  @@unique([type, version])
+  @@map("legal_documents")
+}
+
+// Aceite versionado — não basta um booleano (registra documento, versão, IP, UA).
+model UserLegalAcceptance {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  legalDocumentId String   @map("legal_document_id") @db.Uuid
+  acceptedAt      DateTime @default(now()) @map("accepted_at") @db.Timestamptz
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalDocument LegalDocument @relation(fields: [legalDocumentId], references: [id])
+
+  @@unique([userId, legalDocumentId])
+  @@index([userId])
+  @@map("user_legal_acceptances")
+}
+
+// ── Audit (append-only) ──────────────────────────────────────────────────────
+
+// Trilha imutável. Ator USER/AI/SYSTEM; staff sempre com onBehalfOf (pharmacyId).
+// Sem rota de update/delete na aplicação.
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  pharmacyId  String      @map("pharmacy_id") @db.Uuid
+  actorType   ActorType   @map("actor_type")
+  actorUserId String?     @map("actor_user_id") @db.Uuid
+  actorModel  String?     @map("actor_model") // quando actorType = AI
+  onBehalfOf  String?     @map("on_behalf_of") @db.Uuid // staff agindo no tenant
+  action      AuditAction
+  entityType  String      @map("entity_type")
+  entityId    String      @map("entity_id")
+  before      Json?
+  after       Json?
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@index([pharmacyId, entityType, createdAt])
+  @@index([pharmacyId, createdAt])
+  @@map("audit_logs")
+}

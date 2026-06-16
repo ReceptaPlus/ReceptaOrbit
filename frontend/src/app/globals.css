@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Orbit UI — Design Tokens (docs/DESIGN-SYSTEM.md)
+   ========================================================================== */
+@theme {
+  /* ── Brand scale ─────────────────────────────── */
+  --color-brand-50:  #FEF0EE;
+  --color-brand-100: #FAD9D2;
+  --color-brand-300: #E89580;
+  --color-brand-400: #D97055;   /* manual: laranja claro — degradês */
+  --color-brand-500: #D4432C;   /* manual: laranja principal */
+  --color-brand-600: #B33820;
+  --color-brand-700: #8F2D1A;
+
+  /* ── Neutrals da marca ───────────────────────── */
+  --color-cream-50:  #FFFDF5;
+  --color-cream-100: #FFF5D9;   /* manual: bege — fundo da aplicação */
+  --color-cream-200: #F1EBE0;   /* manual: bege claro */
+  --color-ink-900:   #0A0D0C;   /* manual: preto */
+  --color-ink-700:   #1A1F1E;
+  --color-neutral-600: #695C57; /* manual: cinza */
+  --color-neutral-400: #A89E99;
+  --color-neutral-200: #E8E2D2;
+  --color-neutral-100: #F0EBE0;
+
+  /* ── Semantic ────────────────────────────────── */
+  --color-success-500: #6FAF8F; /* manual: verde — dashboards/indicadores */
+  --color-success-bg:  #EEF7F2;
+  --color-success-text:#3A7D5E;
+  --color-warning-bg:  #FFF7E6;
+  --color-warning-text:#B45309;
+  --color-danger-bg:   #FDECEA;
+  --color-danger-text: #B3261E;
+  --color-info-bg:     #EAF1FB;
+  --color-info-text:   #2D5FA8;
+
+  /* ── Aliases legados (componentes atuais) ────── */
+  --color-primary:        #D4432C;
+  --color-primary-hover:  #B33820;
+  --color-primary-light:  #FEF0EE;
+  --color-primary-soft:   #D97055;
+  --color-cream:          #FFF5D9;
+  --color-cream-alt:      #F1EBE0;
+  --color-card:           #FFFFFF;
+  --color-subtle:         #FAFAF8;
+  --color-ink:            #0A0D0C;
+  --color-secondary:      #695C57;
+  --color-muted:          #A89E99;
+  --color-success:        #6FAF8F;
+  --color-line:           #E8E2D2;
+  --color-line-subtle:    #F0EBE0;
+
+  /* ── Sidebar ─────────────────────────────────── */
+  --color-sidebar:        #0A0D0C;
+  --color-sidebar-accent: #1A1F1E;
+  --color-sidebar-text:   #8A8E8D;
+
+  /* ── shadcn/ui semantic mapping ──────────────── */
+  --color-background:             #FFF5D9;
+  --color-foreground:             #0A0D0C;
+  --color-card-foreground:        #0A0D0C;
+  --color-popover:                #FFFFFF;
+  --color-popover-foreground:     #0A0D0C;
+  --color-primary-foreground:     #FFFFFF;
+  --color-secondary-foreground:   #FFFFFF;
+  --color-muted-foreground:       #695C57;
+  --color-accent:                 #F1EBE0;
+  --color-accent-foreground:      #0A0D0C;
+  --color-destructive:            #B3261E;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border:                 #E8E2D2;
+  --color-input:                  #E8E2D2;
+  --color-ring:                   #D4432C;
+
+  /* ── Typography ──────────────────────────────── */
+  --font-sans: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Nexa", var(--font-poppins), var(--font-montserrat), sans-serif;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.125rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.3125rem;
+  --text-subtitle: 0.9375rem;
+  --text-subtitle--line-height: 1.375rem;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.5rem;
+  --text-display: 1.5rem;
+  --text-display--line-height: 1.875rem;
+  --text-display-lg: 1.75rem;
+  --text-display-lg--line-height: 2.125rem;
+
+  /* ── Radius ──────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ── Shadows (tingidas de ink, nunca cinza-azul) ─ */
+  --shadow-xs: 0 1px 2px rgba(10,13,12,.05);
+  --shadow-sm: 0 1px 3px rgba(10,13,12,.07);
+  --shadow-md: 0 4px 16px rgba(10,13,12,.09);
+  --shadow-lg: 0 8px 32px rgba(10,13,12,.13);
+  --shadow-focus: 0 0 0 3px rgba(212,67,44,.25);
+
+  /* ── Motion ──────────────────────────────────── */
+  --ease-out-soft: cubic-bezier(.32,.72,0,1);
+
+  /* ── Layout ──────────────────────────────────── */
+  --spacing-sidebar: 240px;
+  --spacing-sidebar-collapsed: 64px;
+  --spacing-topbar: 56px;
+}
+
+body {
+  background: var(--color-cream-100);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Números tabulares em dados (padrão Stripe) */
+table, [data-numeric] {
+  font-variant-numeric: tabular-nums;
+}

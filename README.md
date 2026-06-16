@@ -7,6 +7,7 @@ Sistema de gerenciamento de dados e dashboard de informações em tempo real par
 ## Rodando
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
@@ -28,16 +29,23 @@ Abra **http://localhost:3000** — qualquer usuário/senha entra (login visual, 
 
 ## Estrutura
 
+Repositório separado em **frontend** e **backend** para organizar e isolar as alterações no git.
+
 ```
-src/
-├── app/             # rotas (App Router)
-├── components/      # sidebar, bottom-tabs, icons (preenchidos), badges
-└── lib/mock-data.ts # dados de exemplo — modelo da arquitetura
-docs/
-├── ARCHITECTURE.md  # resumo da arquitetura (fonte: docx)
-├── DESIGN-SYSTEM.md # tokens derivados do manual da marca
-└── UX-DESIGN.md     # user flow, sitemap, wireframes, jornada
+recepta-orbit/
+├── frontend/            # app Next.js (App Router) — protótipo navegável
+│   └── src/
+│       ├── app/         # rotas (App Router)
+│       ├── components/  # sidebar, bottom-tabs, icons, badges, ui/ (shadcn)
+│       ├── modules/     # domínio (auth, conversations, sales, ..., tenancy)
+│       ├── mocks/       # ÚNICA fonte de dado falso (formato do domínio validado)
+│       └── types/       # contratos de domínio congelados (domain.ts)
+├── backend/             # scaffold vazio (Prisma, worker, filas, IA — Fases 1+)
+└── docs/                # arquitetura, contratos, modelo de domínio, UX, design system
 ```
+
+> O backend ainda não tem código — ver [backend/README.md](backend/README.md).
+> Frontend lê de `frontend/src/mocks`; o antigo `lib/mock-data.ts` está em desativação.
 
 ## Design
 

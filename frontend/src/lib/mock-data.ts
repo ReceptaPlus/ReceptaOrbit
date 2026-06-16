@@ -1,7 +1,9 @@
 /* ==========================================================================
-   Recepta Orbit — Mock Data
-   Modelado conforme docs/ARQUITETURA (seção 8 — Modelo de dados).
-   Dados de exemplo para prototipação do frontend.
+   Recepta Orbit — Mock Data (LEGADO — EM DESATIVAÇÃO)
+   ⚠️  NÃO USAR EM CÓDIGO NOVO. Fonte canônica: src/mocks/* (formato do domínio
+   validado em docs/CONTRATOS-FRONTEND.md). Estes dados violam contratos
+   congelados (classificação inline no ciclo, ids "c-000" sentinela, staff no
+   tenant). Cada module/<x>/api.ts migra para src/mocks e este arquivo morre.
    ========================================================================== */
 
 export type Stage =
