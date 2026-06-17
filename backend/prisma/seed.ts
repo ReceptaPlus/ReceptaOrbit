@@ -128,10 +128,12 @@ async function main() {
   });
   await prisma.membership.upsert({ where: link(vida.id, daniel.id), update: {}, create: { pharmacyId: vida.id, userId: daniel.id, role: "VIEWER", status: "SUSPENDED" } });
 
-  // ── Convite de 1º acesso da Ana (token só por hash) ─────────────────────────
-  const existingInvite = await prisma.userInvitation.findFirst({ where: { userId: ana.id, usedAt: null } });
+  // ── Convite de 1º acesso da Ana (token aleatório; só o hash é persistido) ───
+  const existingInvite = await prisma.userInvitation.findFirst({
+    where: { userId: ana.id, usedAt: null },
+  });
   if (!existingInvite) {
-    const { tokenHash } = generateInviteToken(); // token em claro iria no e-mail; aqui só o hash persiste
+    const { tokenHash } = generateInviteToken();
     await prisma.userInvitation.create({
       data: { userId: ana.id, tokenHash, expiresAt: inviteExpiry(), createdByUserId: camila.id },
     });

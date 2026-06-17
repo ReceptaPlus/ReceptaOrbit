@@ -1,0 +1,3 @@
+# Cópia do schema Prisma — fonte única vive em backend/prisma/schema.prisma.
+# Regenerada por postinstall/prebuild (db:pull-schema). Não versionar.
+/prisma/schema.prisma

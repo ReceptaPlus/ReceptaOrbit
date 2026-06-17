@@ -10,16 +10,25 @@ import {
   IconSettings,
   IconUsers,
 } from "@/components/icons";
+import { logoutAction } from "@/server/auth/login";
 
 const NAV = [
   { href: "/dashboard", label: "Visão Geral", exact: true, icon: IconDashboard },
-  { href: "/conversas", label: "Conversas", icon: IconChat, badge: 2 },
-  { href: "/vendas", label: "Vendas", icon: IconCart, badge: 1 },
+  { href: "/conversas", label: "Conversas", icon: IconChat },
+  { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
   { href: "/configuracoes", label: "Configurações", icon: IconSettings },
 ];
 
-export function Sidebar() {
+export interface SidebarUser {
+  name: string;
+  email: string;
+  pharmacyName: string;
+  initials: string;
+  canAdmin: boolean;
+}
+
+export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
 
   return (
@@ -40,7 +49,7 @@ export function Sidebar() {
 
       {/* Navegação */}
       <nav className="flex-1 px-2 xl:px-3 space-y-1">
-        {NAV.map(({ href, label, exact, icon: Icon, badge }) => {
+        {NAV.map(({ href, label, exact, icon: Icon }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link
@@ -55,44 +64,49 @@ export function Sidebar() {
                   : "hover:bg-sidebar-accent/60 hover:text-white"
               }`}
             >
-              {/* Indicador ativo: degradê do manual */}
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gradient-to-b from-brand-500 to-brand-400" />
               )}
               <Icon size={18} className="shrink-0" />
               <span className="hidden xl:block flex-1">{label}</span>
-              {badge != null && badge > 0 && (
-                <span
-                  className="hidden xl:inline-flex items-center justify-center min-w-5 h-5 rounded-full
-                             bg-brand-500 text-white text-micro font-semibold px-1.5"
-                  aria-label={`${badge} pendentes`}
-                >
-                  {badge}
-                </span>
-              )}
             </Link>
           );
         })}
+
+        {user.canAdmin && (
+          <Link
+            href="/admin"
+            title="Administração"
+            className="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-small
+                       justify-center xl:justify-start transition-colors duration-150
+                       hover:bg-sidebar-accent/60 hover:text-white"
+          >
+            <IconSettings size={18} className="shrink-0" />
+            <span className="hidden xl:block flex-1">Administração</span>
+          </Link>
+        )}
       </nav>
 
-      {/* Tenant + sessão */}
+      {/* Sessão */}
       <div className="px-3 xl:px-5 py-5 border-t border-white/10">
         <div className="flex items-center gap-3 justify-center xl:justify-start">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-400 text-white flex items-center justify-center text-caption font-semibold shrink-0">
-            DS
+            {user.initials}
           </div>
           <div className="hidden xl:block min-w-0">
-            <p className="text-white text-small truncate">Drogaria São Paulo</p>
-            <p className="text-micro truncate">antonio@dspaulo.com.br</p>
+            <p className="text-white text-small truncate">{user.pharmacyName}</p>
+            <p className="text-micro truncate">{user.email}</p>
           </div>
         </div>
-        <Link
-          href="/login"
-          className="mt-4 hidden xl:flex items-center gap-2 text-caption hover:text-white transition-colors"
-        >
-          <IconLogout size={14} />
-          Sair
-        </Link>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="mt-4 hidden xl:flex items-center gap-2 text-caption hover:text-white transition-colors"
+          >
+            <IconLogout size={14} />
+            Sair
+          </button>
+        </form>
       </div>
     </aside>
   );

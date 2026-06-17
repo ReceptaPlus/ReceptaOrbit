@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
+/* Assina uma media query via store externo (sem setState em effect; SSR-safe). */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
+  function subscribe(callback: () => void): () => void {
     const mql = window.matchMedia(query);
-    setMatches(mql.matches);
-    const onChange = (e: MediaQueryListEvent) => setMatches(e.matches);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, [query]);
+    mql.addEventListener("change", callback);
+    return () => mql.removeEventListener("change", callback);
+  }
+  const getSnapshot = () => window.matchMedia(query).matches;
+  const getServerSnapshot = () => false;
 
-  return matches;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

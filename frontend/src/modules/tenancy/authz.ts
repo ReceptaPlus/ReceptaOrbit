@@ -1,7 +1,6 @@
 /* Autorização (CONTRATOS-FRONTEND Parte 5). can() é a ÚNICA porta — proibido
    `if (role === "MANAGER")` espalhado. Decide RENDERIZAÇÃO (botão some p/ VIEWER,
    não desabilita) e ROTA (redirect). OWNER ⊇ MANAGER ⊇ VIEWER. */
-import { getSession } from "./session";
 import type { Action, SessionRole } from "@/types/domain";
 
 const VIEWER: Action[] = ["view_dashboard"];
@@ -35,7 +34,7 @@ const PERMISSIONS: Record<SessionRole, readonly Action[]> = {
   PLATFORM_SUPPORT,
 };
 
-/** Pode executar a ação no papel atual da sessão (ou num papel explícito). */
-export function can(action: Action, role: SessionRole = getSession().role): boolean {
+/** Pode o papel executar a ação. Papel sempre explícito (vem da sessão real, server-side). */
+export function can(action: Action, role: SessionRole): boolean {
   return PERMISSIONS[role].includes(action);
 }

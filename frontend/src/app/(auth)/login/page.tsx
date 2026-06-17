@@ -1,16 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import { loginAction, type LoginState } from "@/server/auth/login";
+
+const initialState: LoginState = {};
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    router.push("/dashboard");
-  }
+  const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   return (
     <main className="flex-1 grid lg:grid-cols-2 min-h-screen">
@@ -69,15 +66,15 @@ export default function LoginPage() {
             Acesso criado pela equipe Recepta.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form action={formAction} className="space-y-5">
             <div>
-              <label htmlFor="username" className="block text-small font-medium mb-1.5">
-                Usuário
+              <label htmlFor="email" className="block text-small font-medium mb-1.5">
+                E-mail
               </label>
               <input
-                id="username"
-                type="text"
-                defaultValue="antonio.ferreira"
+                id="email"
+                name="email"
+                type="email"
                 autoComplete="username"
                 required
                 className="w-full h-11 rounded-lg border border-line bg-card px-3.5 text-body outline-none
@@ -92,8 +89,8 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
-                  defaultValue="12345678"
                   autoComplete="current-password"
                   required
                   className="w-full h-11 rounded-lg border border-line bg-card px-3.5 pr-11 text-body outline-none
@@ -113,17 +110,25 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {state.error ? (
+              <p role="alert" className="text-small text-danger-text">
+                {state.error}
+              </p>
+            ) : null}
+
             <button
               type="submit"
+              disabled={pending}
               className="w-full h-11 rounded-lg bg-brand-500 hover:bg-brand-600 active:scale-[.99]
-                         text-white font-semibold text-body transition-all shadow-sm"
+                         text-white font-semibold text-body transition-all shadow-sm
+                         disabled:opacity-60 disabled:pointer-events-none"
             >
-              Entrar
+              {pending ? "Entrando…" : "Entrar"}
             </button>
           </form>
 
           <a
-            href="#"
+            href="/recuperar-senha"
             className="block text-center text-small text-neutral-600 hover:text-brand-500 mt-6 transition-colors"
           >
             Esqueci minha senha

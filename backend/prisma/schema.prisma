@@ -5,7 +5,8 @@
 // frontend/src/types/domain.ts. Convenção: model PascalCase, coluna/tabela snake_case via @map/@@map.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
