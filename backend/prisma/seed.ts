@@ -67,7 +67,7 @@ async function main() {
       aiAutoConfirmThreshold: 0.7,
     },
   });
-  await prisma.pharmacy.upsert({
+  const bemEstar = await prisma.pharmacy.upsert({
     where: { slug: "drogaria-bem-estar" },
     update: {},
     create: {
@@ -176,7 +176,56 @@ async function main() {
     });
   }
 
-  console.log("Seed concluído: 3 farmácias, 5 usuários, 6 memberships, staff, convite, aceites, auditoria.");
+  // ── V1 Ingestão — conexões WhatsApp (espelham os 3 estados dos mocks) ────────
+  await prisma.whatsAppConnection.upsert({
+    where: { pharmacyId: dsp.id },
+    update: {},
+    create: { pharmacyId: dsp.id, state: "CONNECTED", pairedNumber: "+5511940028922", instanceName: "drogaria-sp-01", stateChangedAt: new Date("2026-06-10T08:00:00Z") },
+  });
+  await prisma.whatsAppConnection.upsert({
+    where: { pharmacyId: vida.id },
+    update: {},
+    create: { pharmacyId: vida.id, state: "DOWN", pairedNumber: "+5511955551234", instanceName: "farmacia-vida-01", stateChangedAt: new Date("2026-06-17T22:15:00Z") },
+  });
+  await prisma.whatsAppConnection.upsert({
+    where: { pharmacyId: bemEstar.id },
+    update: {},
+    create: { pharmacyId: bemEstar.id, state: "PAIRING", instanceName: "bem-estar-01", stateChangedAt: new Date("2026-06-18T09:00:00Z"), qrExpiresAt: new Date("2026-06-18T09:01:00Z") },
+  });
+
+  // ── V1 Ingestão — contato + ciclo aberto com mensagens (tenant dsp) ─────────
+  const rafael = await prisma.contact.upsert({
+    where: { pharmacyId_phoneE164: { pharmacyId: dsp.id, phoneE164: "+5511990005543" } },
+    update: {},
+    create: { pharmacyId: dsp.id, name: "Rafael Lima", phoneE164: "+5511990005543", firstSeenAt: new Date("2025-11-20T10:00:00Z"), lastSeenAt: new Date("2026-06-18T10:07:00Z") },
+  });
+  const cycle = await prisma.conversationCycle.upsert({
+    where: { id_pharmacyId: { id: "00000000-0000-4000-8000-000000000006", pharmacyId: dsp.id } },
+    update: {},
+    create: {
+      id: "00000000-0000-4000-8000-000000000006",
+      pharmacyId: dsp.id,
+      contactId: rafael.id,
+      startedAt: new Date("2026-06-18T08:20:00Z"),
+      expiresAt: new Date("2026-06-19T08:20:00Z"),
+      lastMessageAt: new Date("2026-06-18T08:30:00Z"),
+      status: "WAITING_PHARMACY", // última msg é INBOUND, dentro da janela
+    },
+  });
+  const seedMessages: { providerMessageId: string; direction: "INBOUND" | "OUTBOUND"; textContent: string; sentAt: string }[] = [
+    { providerMessageId: "evo_seed_0601", direction: "INBOUND", textContent: "Boa tarde, vocês têm dipirona em gotas?", sentAt: "2026-06-18T08:20:00Z" },
+    { providerMessageId: "evo_seed_0602", direction: "OUTBOUND", textContent: "Temos sim! R$ 8,90. Deseja entrega?", sentAt: "2026-06-18T08:25:00Z" },
+    { providerMessageId: "evo_seed_0603", direction: "INBOUND", textContent: "Pode ser entrega. Qual o prazo?", sentAt: "2026-06-18T08:30:00Z" },
+  ];
+  for (const m of seedMessages) {
+    await prisma.message.upsert({
+      where: { pharmacyId_providerMessageId: { pharmacyId: dsp.id, providerMessageId: m.providerMessageId } },
+      update: {},
+      create: { pharmacyId: dsp.id, cycleId: cycle.id, direction: m.direction, textContent: m.textContent, providerMessageId: m.providerMessageId, sentAt: new Date(m.sentAt) },
+    });
+  }
+
+  console.log("Seed concluído: 3 farmácias, 5 usuários, 6 memberships, staff, convite, aceites, auditoria, 3 conexões WhatsApp, 1 contato, 1 ciclo, 3 mensagens.");
 }
 
 main()

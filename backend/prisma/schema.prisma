@@ -1,8 +1,10 @@
-// Recepta Orbit — Schema Prisma · FASE 1 (fundação)
-// Escopo: identidade, multi-tenancy, RBAC, primeiro acesso, termos/privacidade, auditoria.
-// Fora de escopo (Fases 2-5): WhatsApp, contatos, conversas, mensagens, IA, vendas, atribuição.
+// Recepta Orbit — Schema Prisma
+// FASE 1 (fundação): identidade, multi-tenancy, RBAC, primeiro acesso, termos/privacidade, auditoria.
+// V1 INGESTÃO ("espionagem" WhatsApp): WhatsAppConnection, Contact, ConversationCycle, Message, WebhookEvent.
+// Fora de escopo (entra com a IA, fase futura): AIAnalysis, Sale, SaleItem, TrackingLink.
 // Autoridade: docs/DOMAIN-MODEL.md + docs/CONTRATOS-FRONTEND.md (congelados) +
 // frontend/src/types/domain.ts. Convenção: model PascalCase, coluna/tabela snake_case via @map/@@map.
+// Multi-tenant: pharmacy_id NOT NULL no domínio; FK compostas (id, pharmacy_id) impedem mistura de tenants.
 
 generator client {
   provider      = "prisma-client-js"
@@ -81,6 +83,34 @@ enum AuditAction {
   PHARMACY_CREATED
 }
 
+// ── V1 Ingestão (espionagem WhatsApp) ────────────────────────────────────────
+
+enum WhatsAppState {
+  DISCONNECTED
+  PAIRING
+  CONNECTED
+  DOWN
+}
+
+enum CycleStatus {
+  OPEN
+  WAITING_CUSTOMER
+  WAITING_PHARMACY
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
 // ── Tenancy ────────────────────────────────────────────────────────────────
 
 model Pharmacy {
@@ -97,8 +127,10 @@ model Pharmacy {
   createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
-  memberships Membership[]
-  auditLogs   AuditLog[]
+  memberships        Membership[]
+  auditLogs          AuditLog[]
+  whatsAppConnection WhatsAppConnection?
+  contacts           Contact[]
 
   @@map("pharmacies")
 }
@@ -239,4 +271,110 @@ model AuditLog {
   @@index([pharmacyId, entityType, createdAt])
   @@index([pharmacyId, createdAt])
   @@map("audit_logs")
+}
+
+// ── V1 Ingestão — WhatsApp / Conversas (espionagem) ──────────────────────────
+
+// Estado do pareamento Evolution — máquina de 4 estados (1:1 com Pharmacy).
+// Alimenta o GlobalBanner (DOWN) e a tela de pareamento.
+model WhatsAppConnection {
+  pharmacyId     String        @id @map("pharmacy_id") @db.Uuid
+  state          WhatsAppState @default(DISCONNECTED)
+  pairedNumber   String?       @map("paired_number")
+  instanceName   String?       @unique @map("instance_name") // instância Evolution → resolve tenant no webhook
+  stateChangedAt DateTime      @default(now()) @map("state_changed_at") @db.Timestamptz
+  qrExpiresAt    DateTime?     @map("qr_expires_at") @db.Timestamptz
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_connections")
+}
+
+// Pessoa-cliente consolidada por telefone DENTRO do tenant. "Cliente" é estado
+// derivado (compra > 0) — fora da V1. Projeções (contagens/totais) são calculadas
+// por query, nunca colunas-verdade (DOMAIN-MODEL regra 9 / anti-pattern 2).
+model Contact {
+  id          String   @id @default(uuid()) @db.Uuid
+  pharmacyId  String   @map("pharmacy_id") @db.Uuid
+  name        String // fallback = telefone
+  phoneE164   String   @map("phone_e164")
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.Timestamptz
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  pharmacy Pharmacy            @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  cycles   ConversationCycle[]
+
+  @@unique([pharmacyId, phoneE164]) // telefone único POR tenant (regra 11)
+  @@unique([id, pharmacyId]) // alvo da FK composta dos ciclos (regra 12)
+  @@index([pharmacyId, lastSeenAt])
+  @@map("contacts")
+}
+
+// Janela de 24h de conversa — unidade de agrupamento. Sem IA na V1: status é
+// mecânico (tempo + direção da última msg); attribution fica nulo até a IA entrar.
+// Classificação NUNCA é campo do ciclo (anti-pattern 1).
+model ConversationCycle {
+  id            String      @id @default(uuid()) @db.Uuid
+  pharmacyId    String      @map("pharmacy_id") @db.Uuid
+  contactId     String      @map("contact_id") @db.Uuid
+  startedAt     DateTime    @default(now()) @map("started_at") @db.Timestamptz
+  expiresAt     DateTime    @map("expires_at") @db.Timestamptz // startedAt + 24h
+  lastMessageAt DateTime    @map("last_message_at") @db.Timestamptz
+  status        CycleStatus @default(OPEN)
+  attribution   Json? // VO-snapshot; populado quando atribuição/IA entrar
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  contact  Contact   @relation(fields: [contactId, pharmacyId], references: [id, pharmacyId], onDelete: Cascade)
+  messages Message[]
+  // NOTA migration (SQL manual — Prisma não suporta índice filtrado):
+  //  · UNIQUE parcial (pharmacy_id, contact_id) WHERE status='OPEN' → invariante "1 ciclo OPEN"
+  //  · índice parcial (pharmacy_id, contact_id) WHERE status='OPEN' → caminho quente do worker
+
+  @@unique([id, pharmacyId]) // alvo da FK composta das mensagens (regra 12)
+  @@index([pharmacyId, contactId])
+  @@index([pharmacyId, lastMessageAt])
+  @@map("conversation_cycles")
+}
+
+// Mensagem individual — espelho IMUTÁVEL do WhatsApp; fonte de verdade da auditoria.
+// Ninguém altera/exclui. providerMessageId vem da Evolution (dedup de rajada/replay).
+model Message {
+  id                String           @id @default(uuid()) @db.Uuid
+  pharmacyId        String           @map("pharmacy_id") @db.Uuid
+  cycleId           String           @map("cycle_id") @db.Uuid
+  direction         MessageDirection
+  textContent       String           @map("text_content")
+  providerMessageId String?          @map("provider_message_id")
+  sentAt            DateTime         @map("sent_at") @db.Timestamptz
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle ConversationCycle @relation(fields: [cycleId, pharmacyId], references: [id, pharmacyId], onDelete: Cascade)
+
+  @@unique([pharmacyId, providerMessageId]) // dedup (nulos são distintos no Postgres)
+  @@index([pharmacyId, cycleId, sentAt])
+  @@map("messages")
+}
+
+// Payload bruto do webhook Evolution — replay/debug. SEPARADO da Message (risco de
+// schema 1 / escalabilidade). pharmacy_id nulo até resolver instância→tenant.
+// Sem FK p/ Pharmacy: tabela de pouso aceita eventos não-casados.
+model WebhookEvent {
+  id           String             @id @default(uuid()) @db.Uuid
+  pharmacyId   String?            @map("pharmacy_id") @db.Uuid
+  instanceName String?            @map("instance_name")
+  eventType    String?            @map("event_type")
+  payload      Json
+  status       WebhookEventStatus @default(PENDING)
+  error        String?
+  receivedAt   DateTime           @default(now()) @map("received_at") @db.Timestamptz
+  processedAt  DateTime?          @map("processed_at") @db.Timestamptz
+
+  @@index([status, receivedAt])
+  @@map("webhook_events")
 }
