@@ -1,0 +1,16 @@
+# Worker de ingestão (Recepta Orbit) — processo Node separado (pg-boss-less: poll de webhook_events).
+# Build do contexto da raiz; usa só a pasta backend. Roda com tsx (devDependency).
+FROM node:20-bookworm-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Deps + schema (postinstall do backend roda prisma generate).
+COPY backend/package.json backend/package-lock.json* ./
+COPY backend/prisma ./prisma
+RUN npm install
+# Código do backend.
+COPY backend/ ./
+RUN npx prisma generate
+
+ENV NODE_ENV=production
+CMD ["npm", "run", "worker"]

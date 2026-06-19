@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  IconCart,
   IconChat,
   IconDashboard,
   IconLogout,
@@ -12,10 +11,10 @@ import {
 } from "@/components/icons";
 import { logoutAction } from "@/server/auth/login";
 
+// V1 (espionagem): sem Vendas (entra com a IA).
 const NAV = [
   { href: "/dashboard", label: "Visão Geral", exact: true, icon: IconDashboard },
   { href: "/conversas", label: "Conversas", icon: IconChat },
-  { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
   { href: "/configuracoes", label: "Configurações", icon: IconSettings },
 ];

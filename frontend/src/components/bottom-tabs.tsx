@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  IconCart,
   IconChat,
   IconDashboard,
   IconMore,
+  IconUsers,
 } from "@/components/icons";
 
+// V1 (espionagem): sem Vendas.
 const TABS = [
   { href: "/dashboard", label: "Geral", exact: true, icon: IconDashboard },
   { href: "/conversas", label: "Conversas", icon: IconChat },
-  { href: "/vendas", label: "Vendas", icon: IconCart, badge: 1 },
+  { href: "/clientes", label: "Clientes", icon: IconUsers },
   { href: "/configuracoes", label: "Mais", icon: IconMore },
 ];
 
@@ -25,7 +26,7 @@ export function BottomTabs() {
                  border-t border-line flex items-stretch pb-[env(safe-area-inset-bottom)]"
       aria-label="Navegação mobile"
     >
-      {TABS.map(({ href, label, exact, icon: Icon, badge }) => {
+      {TABS.map(({ href, label, exact, icon: Icon }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link
@@ -39,11 +40,6 @@ export function BottomTabs() {
           >
             <span className="relative">
               <Icon size={20} />
-              {badge != null && badge > 0 && (
-                <span className="absolute -top-1 -right-2 w-3.5 h-3.5 rounded-full bg-brand-500 text-white text-[9px] leading-[14px] text-center font-semibold">
-                  {badge}
-                </span>
-              )}
             </span>
             {label}
             {active && (

@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { getAuthorizedPharmacyContext } from "@/server/auth/dal";
+import { getAdsByPharmacyName, type AdsSummary } from "@/server/agente/ads";
 
 /* Camada de dados V1 (sem IA) — Dashboard de VOLUME. Sem KPIs de venda
    (total vendido/ticket/conversão) — entram com a IA/vendas. */
@@ -51,4 +52,14 @@ export async function fetchDashboardVolume(pharmacyId: string): Promise<Dashboar
 export async function getDashboardVolumeVM(): Promise<DashboardVolumeVM> {
   const { pharmacyId } = await getAuthorizedPharmacyContext();
   return fetchDashboardVolume(pharmacyId);
+}
+
+/* Cards de anúncio (Meta+Google) — reuso read-only do banco do Agente-Meta-Ads.
+   Mapeamento por NOME da farmácia (tradeName) → Client do Agente. Null = sem Agente
+   configurado, sem match, ou falha (cards somem; dashboard de volume não depende disto). */
+export async function getAdsCardsVM(days = 7): Promise<AdsSummary | null> {
+  const { pharmacyId } = await getAuthorizedPharmacyContext();
+  const pharmacy = await db.pharmacy.findUnique({ where: { id: pharmacyId }, select: { tradeName: true } });
+  if (!pharmacy) return null;
+  return getAdsByPharmacyName(pharmacy.tradeName, days);
 }
