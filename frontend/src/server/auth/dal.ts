@@ -50,7 +50,11 @@ export interface PharmacyContext {
    é o da sessão, conferido contra um Membership ATIVO no banco. */
 export async function getAuthorizedPharmacyContext(): Promise<PharmacyContext> {
   const session = await requireSession();
-  if (!session.pharmacyId) redirect("/login");
+  if (!session.pharmacyId) {
+    // Staff (sem farmácia) não tem contexto de tenant — manda pro /admin (evita loop /login).
+    const staff = await db.platformStaff.findUnique({ where: { userId: session.userId }, select: { userId: true } });
+    redirect(staff ? "/admin" : "/login");
+  }
   const membership = await db.membership.findUnique({
     where: { pharmacyId_userId: { pharmacyId: session.pharmacyId, userId: session.userId } },
   });

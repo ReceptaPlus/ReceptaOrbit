@@ -70,7 +70,8 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     onboardingRequired: user.mustChangePassword || (!membership && !staff),
   });
 
-  redirect("/dashboard");
+  // Staff (sem farmácia) vai pro /admin; membros vão pro dashboard do tenant.
+  redirect(membership ? "/dashboard" : staff ? "/admin" : "/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {
