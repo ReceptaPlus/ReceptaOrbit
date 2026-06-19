@@ -11,6 +11,9 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "worker": "tsx src/worker/index.ts",
+    "worker:watch": "tsx watch src/worker/index.ts",
+    "wa:version": "node scripts/get-wa-version.mjs",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "typecheck": "tsc --noEmit"

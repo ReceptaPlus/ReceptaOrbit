@@ -194,10 +194,12 @@ async function main() {
   });
 
   // ── V1 Ingestão — contato + ciclo aberto com mensagens (tenant dsp) ─────────
+  const now = new Date();
+  const minsAgo = (m: number) => new Date(now.getTime() - m * 60_000);
   const rafael = await prisma.contact.upsert({
     where: { pharmacyId_phoneE164: { pharmacyId: dsp.id, phoneE164: "+5511990005543" } },
     update: {},
-    create: { pharmacyId: dsp.id, name: "Rafael Lima", phoneE164: "+5511990005543", firstSeenAt: new Date("2025-11-20T10:00:00Z"), lastSeenAt: new Date("2026-06-18T10:07:00Z") },
+    create: { pharmacyId: dsp.id, name: "Rafael Lima", phoneE164: "+5511990005543", firstSeenAt: new Date("2025-11-20T10:00:00Z"), lastSeenAt: minsAgo(5) },
   });
   const cycle = await prisma.conversationCycle.upsert({
     where: { id_pharmacyId: { id: "00000000-0000-4000-8000-000000000006", pharmacyId: dsp.id } },
@@ -206,22 +208,22 @@ async function main() {
       id: "00000000-0000-4000-8000-000000000006",
       pharmacyId: dsp.id,
       contactId: rafael.id,
-      startedAt: new Date("2026-06-18T08:20:00Z"),
-      expiresAt: new Date("2026-06-19T08:20:00Z"),
-      lastMessageAt: new Date("2026-06-18T08:30:00Z"),
-      status: "WAITING_PHARMACY", // última msg é INBOUND, dentro da janela
+      startedAt: minsAgo(10),
+      expiresAt: new Date(now.getTime() + 23 * 60 * 60_000),
+      lastMessageAt: minsAgo(5),
+      status: "OPEN", // ativo; WAITING_* é DERIVADO na VM (última msg INBOUND → aguardando farmácia)
     },
   });
-  const seedMessages: { providerMessageId: string; direction: "INBOUND" | "OUTBOUND"; textContent: string; sentAt: string }[] = [
-    { providerMessageId: "evo_seed_0601", direction: "INBOUND", textContent: "Boa tarde, vocês têm dipirona em gotas?", sentAt: "2026-06-18T08:20:00Z" },
-    { providerMessageId: "evo_seed_0602", direction: "OUTBOUND", textContent: "Temos sim! R$ 8,90. Deseja entrega?", sentAt: "2026-06-18T08:25:00Z" },
-    { providerMessageId: "evo_seed_0603", direction: "INBOUND", textContent: "Pode ser entrega. Qual o prazo?", sentAt: "2026-06-18T08:30:00Z" },
+  const seedMessages: { providerMessageId: string; direction: "INBOUND" | "OUTBOUND"; textContent: string; sentAt: Date }[] = [
+    { providerMessageId: "evo_seed_0601", direction: "INBOUND", textContent: "Boa tarde, vocês têm dipirona em gotas?", sentAt: minsAgo(10) },
+    { providerMessageId: "evo_seed_0602", direction: "OUTBOUND", textContent: "Temos sim! R$ 8,90. Deseja entrega?", sentAt: minsAgo(7) },
+    { providerMessageId: "evo_seed_0603", direction: "INBOUND", textContent: "Pode ser entrega. Qual o prazo?", sentAt: minsAgo(5) },
   ];
   for (const m of seedMessages) {
     await prisma.message.upsert({
       where: { pharmacyId_providerMessageId: { pharmacyId: dsp.id, providerMessageId: m.providerMessageId } },
       update: {},
-      create: { pharmacyId: dsp.id, cycleId: cycle.id, direction: m.direction, textContent: m.textContent, providerMessageId: m.providerMessageId, sentAt: new Date(m.sentAt) },
+      create: { pharmacyId: dsp.id, cycleId: cycle.id, direction: m.direction, textContent: m.textContent, providerMessageId: m.providerMessageId, sentAt: m.sentAt },
     });
   }
 
