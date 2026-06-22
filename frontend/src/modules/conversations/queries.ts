@@ -23,6 +23,13 @@ export interface CycleRowVM {
   lastMessagePreview: string;
 }
 
+export interface CycleAttributionVM {
+  source: string;
+  method: string;
+  confidence: number;
+  campaignName?: string;
+}
+
 export interface CycleDetailVM {
   id: string;
   contactId: string;
@@ -30,6 +37,7 @@ export interface CycleDetailVM {
   phoneDisplay: string;
   status: "OPEN" | "CLOSED";
   waiting: Waiting;
+  attribution: CycleAttributionVM | null;
   messages: { id: string; direction: "INBOUND" | "OUTBOUND"; text: string; time: string }[];
 }
 
@@ -91,6 +99,7 @@ export async function fetchCycleDetail(
     phoneDisplay: phoneDisplay(role, cycle.contact.phoneE164),
     status: cycle.status === "OPEN" ? "OPEN" : "CLOSED",
     waiting: deriveWaiting(cycle.status, last?.direction),
+    attribution: (cycle.attribution as CycleAttributionVM | null) ?? null,
     messages: cycle.messages.map((m) => ({
       id: m.id,
       direction: m.direction,

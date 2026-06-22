@@ -11,8 +11,19 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/* Modo demo local (sem DATABASE_URL): sem login — trata todo request como autenticado. */
+const DEMO = !process.env.DATABASE_URL;
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (DEMO) {
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next(); // /login navegável p/ demonstração
+  }
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
   if (!isPublic(pathname) && !hasSession) {

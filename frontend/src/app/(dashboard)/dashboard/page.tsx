@@ -1,122 +1,204 @@
+"use client";
+
 import Link from "next/link";
-import { getDashboardVolumeVM, getAdsCardsVM } from "@/modules/dashboard/queries";
-import { listConversationsVM } from "@/modules/conversations/queries";
-import { StatusBadge } from "@/components/badges";
-import { WaitingBadge } from "@/components/waiting-badge";
+import { KpiCard } from "@/components/kpi-card";
+import { AreaChart } from "@/components/charts/area-chart";
+import { DonutChart } from "@/components/charts/donut-chart";
 import { BarChart } from "@/components/charts/bar-chart";
-import type { ProviderMetrics } from "@/server/agente/ads";
+import { IconCart, IconChat, IconUsers } from "@/components/icons";
 
-function brl(reais: number): string {
-  return reais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+/* Dashboard operacional — espelha o protótipo premium (Lovable). Dados fictícios
+   (modo demo). A informação é protagonista; a atmosfera fica no fundo. */
+
+const KPIS = [
+  { label: "Conversas abertas", value: "248", delta: { value: "12%", direction: "up" as const }, hint: "vs. 7d", accent: true, icon: <IconChat size={16} /> },
+  { label: "Conversas encerradas", value: "1.082", delta: { value: "4.8%", direction: "up" as const }, hint: "vs. 7d" },
+  { label: "Conversão", value: "18.4%", delta: { value: "1.9pp", direction: "up" as const }, hint: "vs. 7d" },
+  { label: "Receita total", value: "R$ 113,7K", delta: { value: "22%", direction: "up" as const }, hint: "vs. 7d", accent: true, icon: <IconCart size={16} /> },
+  { label: "Ticket médio", value: "R$ 184", delta: { value: "2.1%", direction: "down" as const }, hint: "vs. 7d" },
+  { label: "Vendas confirmadas", value: "612", delta: { value: "8.4%", direction: "up" as const }, hint: "vs. 7d" },
+  { label: "Vendas pendentes", value: "47", delta: { value: "12%", direction: "down" as const }, hint: "aguardando" },
+  { label: "Clientes ativos", value: "3.412", delta: { value: "5.6%", direction: "up" as const }, hint: "no mês", accent: true, icon: <IconUsers size={16} /> },
+];
+
+const REVENUE = [
+  { dia: "14/06", receita: 12.4, comissao: 1.9 },
+  { dia: "15/06", receita: 14.1, comissao: 2.1 },
+  { dia: "16/06", receita: 13.2, comissao: 2.0 },
+  { dia: "17/06", receita: 16.8, comissao: 2.5 },
+  { dia: "18/06", receita: 18.9, comissao: 2.8 },
+  { dia: "19/06", receita: 17.3, comissao: 2.6 },
+  { dia: "20/06", receita: 20.9, comissao: 3.1 },
+];
+
+const ORIGEM = [
+  { label: "Meta Ads", value: 268, color: "#D4432C" },
+  { label: "Google Ads", value: 184, color: "#D97055" },
+  { label: "Instagram", value: 96, color: "#6FAF8F" },
+  { label: "WhatsApp", value: 64, color: "#E89580" },
+];
+
+const CONFIRMADAS = [
+  { label: "14/06", value: 74 },
+  { label: "15/06", value: 82 },
+  { label: "16/06", value: 79 },
+  { label: "17/06", value: 96 },
+  { label: "18/06", value: 108 },
+  { label: "19/06", value: 91 },
+  { label: "20/06", value: 112 },
+];
+
+const CAMPANHAS = [
+  { campanha: "Genéricos Junho", origem: "Meta Ads", conversao: "21.4%", receita: "R$ 38,2K", up: true },
+  { campanha: "Vitaminas Search", origem: "Google Ads", conversao: "18.9%", receita: "R$ 27,5K", up: true },
+  { campanha: "Remarketing Maio", origem: "Meta Ads", conversao: "14.2%", receita: "R$ 19,8K", up: false },
+  { campanha: "Marca Institucional", origem: "Google Ads", conversao: "11.7%", receita: "R$ 12,1K", up: true },
+];
+
+const ALERTAS = [
+  { tone: "warning", title: "8 classificações de baixa confiança", desc: "Conversas abaixo do limiar de 85% aguardam revisão manual." },
+  { tone: "info", title: "Pico de demanda em Genéricos", desc: "Volume 34% acima da média nas últimas 24h — considere reforçar estoque." },
+  { tone: "danger", title: "12 vendas pendentes há +24h", desc: "Confirmação automática expirou. Revise para não perder atribuição." },
+];
+
+function Card({ title, action, children, className = "" }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`card-premium animate-fade-in-up p-5 ${className}`}>
+      {(title || action) && (
+        <header className="mb-4 flex items-center justify-between gap-3">
+          {title && <h2 className="font-display text-subtitle font-semibold text-ink">{title}</h2>}
+          {action}
+        </header>
+      )}
+      {children}
+    </section>
+  );
 }
-function num(n: number): string {
-  return n.toLocaleString("pt-BR");
-}
 
-export default async function DashboardPage() {
-  const [vol, ads, cycles] = await Promise.all([
-    getDashboardVolumeVM(),
-    getAdsCardsVM(),
-    listConversationsVM(),
-  ]);
-  const recent = cycles.slice(0, 5);
-
+export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold font-display">Visão Geral</h1>
-        <p className="text-sm text-secondary mt-1">Movimento de conversas dos últimos 7 dias.</p>
+      {/* Banner de boas-vindas */}
+      <section className="card-premium animate-fade-in relative overflow-hidden p-0">
+        <div className="relative flex items-stretch">
+          <div className="relative z-10 flex-1 p-6 sm:p-8">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-0.5 text-micro font-semibold text-brand-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-500 pulse-dot" />
+              Sua farmácia em tempo real
+            </span>
+            <h1 className="mt-3 font-display text-display-lg font-bold tracking-tight text-ink">
+              Bem-vinda, Camila
+            </h1>
+            <p className="mt-1.5 max-w-md text-body text-secondary">
+              Conversas do WhatsApp viram vendas, atribuição de campanha e clientes recorrentes —
+              tudo num só lugar.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/conversas" className="btn-primary !h-10 text-small">Ver conversas</Link>
+              <Link href="/vendas" className="inline-flex h-10 items-center rounded-md border border-line bg-white/70 px-3.5 text-small font-medium text-secondary backdrop-blur transition-colors hover:border-brand-400 hover:text-brand-500">
+                Relatório de vendas
+              </Link>
+            </div>
+          </div>
+          {/* Imagem da marca (some no mobile p/ não brigar com o texto) */}
+          <div className="relative hidden w-[42%] max-w-md shrink-0 sm:block">
+            <span className="absolute inset-0 z-10 bg-gradient-to-r from-white via-white/40 to-transparent" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/dashboard-banner.jpg"
+              alt="Recepta — atendimento de farmácia"
+              className="h-full w-full object-cover object-center"
+            />
+          </div>
+        </div>
+      </section>
+
+      <header className="animate-fade-in">
+        <h2 className="font-display text-title font-bold tracking-tight text-ink">Dashboard operacional</h2>
+        <p className="mt-1 text-body text-secondary">Visão consolidada de conversas, vendas e performance comercial.</p>
       </header>
 
-      {/* KPIs de volume */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard label="Conversas ativas" value={num(vol.activeConversations)} />
-        <KpiCard label="Novos contatos (7d)" value={num(vol.newContacts7d)} />
-        <KpiCard label="Mensagens (7d)" value={num(vol.messages7d)} />
-        <KpiCard label="Encerradas (7d)" value={num(vol.closedCycles7d)} />
-      </section>
-
-      {/* Gráfico de mensagens/dia */}
-      <section className="bg-card rounded-xl border border-line p-5">
-        <h2 className="font-semibold font-display mb-4">Mensagens por dia</h2>
-        <BarChart data={vol.msgsPerDay} height={150} />
-      </section>
-
-      {/* Anúncios (Meta + Google) — só aparece se houver dados do Agente */}
-      {ads && (
-        <section className="bg-card rounded-xl border border-line p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold font-display">Anúncios — últimos 7 dias</h2>
-            <span className="text-xs text-muted">{ads.clientName}</span>
-          </div>
-          <div className="space-y-4">
-            <ProviderRow title="Meta Ads" m={ads.meta} />
-            <ProviderRow title="Google Ads" m={ads.google} />
-          </div>
-        </section>
-      )}
-
-      {/* Conversas recentes */}
-      <section className="bg-card rounded-xl border border-line p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold font-display">Conversas recentes</h2>
-          <Link href="/conversas" className="text-sm text-primary hover:underline">Ver todas</Link>
-        </div>
-        {recent.length === 0 ? (
-          <p className="text-sm text-secondary">Nenhuma conversa ainda.</p>
-        ) : (
-          <ul className="divide-y divide-line-subtle">
-            {recent.map((c) => (
-              <li key={c.id}>
-                <Link href={`/conversas/${c.id}`} className="flex items-center gap-4 py-3 hover:bg-subtle -mx-2 px-2 rounded-lg">
-                  <div className="w-9 h-9 rounded-full bg-primary-light text-primary flex items-center justify-center text-sm font-semibold shrink-0">
-                    {c.contactName.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{c.contactName}</p>
-                    <p className="text-xs text-secondary truncate">{c.lastMessagePreview}</p>
-                  </div>
-                  <WaitingBadge waiting={c.waiting} />
-                  <StatusBadge status={c.status} />
-                  <span className="text-xs text-muted shrink-0">{c.lastMessageTime}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function KpiCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card rounded-xl border border-line p-5">
-      <p className="text-sm text-secondary">{label}</p>
-      <p className="text-2xl font-bold font-display mt-1">{value}</p>
-    </div>
-  );
-}
-
-function ProviderRow({ title, m }: { title: string; m: ProviderMetrics }) {
-  return (
-    <div className="rounded-lg border border-line-subtle p-4">
-      <p className="text-sm font-medium mb-3">{title}</p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label="Investido" value={brl(m.spend)} />
-        <Metric label="Impressões" value={num(m.impressions)} />
-        <Metric label="Cliques" value={num(m.clicks)} />
-        <Metric label="Conversões" value={num(m.conversions)} />
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {KPIS.map((k, i) => (
+          <KpiCard key={k.label} {...k} index={i} />
+        ))}
       </div>
-    </div>
-  );
-}
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-secondary">{label}</p>
-      <p className="text-lg font-bold font-display mt-0.5 tabular-nums">{value}</p>
+      {/* Receita + Origem */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card title="Evolução de receita" className="lg:col-span-2" action={<span className="text-caption text-muted">Receita vs. comissões — 7 dias (R$ mil)</span>}>
+          <AreaChart
+            data={REVENUE}
+            xKey="dia"
+            series={[
+              { key: "receita", label: "Receita", color: "#D4432C" },
+              { key: "comissao", label: "Comissões", color: "#6FAF8F" },
+            ]}
+            format={(v) => `R$ ${v.toFixed(1)}K`}
+          />
+        </Card>
+        <Card title="Vendas por origem" action={<span className="text-caption text-muted">Distribuição</span>}>
+          <DonutChart data={ORIGEM} />
+        </Card>
+      </div>
+
+      {/* Campanhas + Alertas */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card title="Performance comercial por campanha" className="lg:col-span-2">
+          <div className="overflow-hidden">
+            <table className="w-full text-small">
+              <thead>
+                <tr className="border-b border-line text-left text-caption uppercase tracking-wide text-muted">
+                  <th className="pb-2.5 font-medium">Campanha</th>
+                  <th className="pb-2.5 font-medium">Origem</th>
+                  <th className="pb-2.5 font-medium text-right">Conversão</th>
+                  <th className="pb-2.5 font-medium text-right">Receita</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CAMPANHAS.map((c) => (
+                  <tr key={c.campanha} className="border-b border-line-subtle transition-colors last:border-0 hover:bg-cream-alt/50">
+                    <td className="py-3 font-medium text-ink">{c.campanha}</td>
+                    <td className="py-3 text-secondary">{c.origem}</td>
+                    <td className="py-3 text-right" data-numeric>
+                      <span className={c.up ? "text-success-text" : "text-danger-text"}>{c.up ? "▲" : "▼"} {c.conversao}</span>
+                    </td>
+                    <td className="py-3 text-right font-semibold text-ink" data-numeric>{c.receita}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card title="Alertas da IA">
+          <ul className="space-y-3">
+            {ALERTAS.map((a) => {
+              const tone =
+                a.tone === "warning"
+                  ? "bg-warning-bg text-warning-text"
+                  : a.tone === "danger"
+                    ? "bg-danger-bg text-danger-text"
+                    : "bg-info-bg text-info-text";
+              return (
+                <li key={a.title} className="flex gap-3 rounded-lg border border-line-subtle bg-white/40 p-3">
+                  <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-caption font-bold ${tone}`}>!</span>
+                  <div className="min-w-0">
+                    <p className="text-small font-medium text-ink">{a.title}</p>
+                    <p className="mt-0.5 text-caption text-secondary">{a.desc}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      </div>
+
+      {/* Confirmadas por dia */}
+      <Card title="Vendas confirmadas por dia" action={<Link href="/vendas" className="text-caption font-medium text-brand-500 hover:text-brand-600">Ver vendas →</Link>}>
+        <BarChart data={CONFIRMADAS} height={200} unit="vendas" />
+      </Card>
     </div>
   );
 }

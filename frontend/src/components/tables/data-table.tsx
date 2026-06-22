@@ -51,22 +51,24 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-3">
-      <div className="bg-card rounded-xl border border-line overflow-x-auto">
-        <Table>
+      <div className="card-premium overflow-x-auto p-0">
+        <Table className="row-stagger">
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="hover:bg-transparent">
+              <TableRow key={hg.id} className="border-line hover:bg-transparent">
                 {hg.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "text-xs text-secondary whitespace-nowrap",
-                      header.column.getCanSort() && "cursor-pointer select-none"
+                      "h-11 whitespace-nowrap bg-cream-alt/40 text-caption font-semibold uppercase tracking-wide text-muted",
+                      header.column.getCanSort() && "cursor-pointer select-none transition-colors hover:text-ink"
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
-                    {{ asc: " ↑", desc: " ↓" }[header.column.getIsSorted() as string] ?? null}
+                    {{ asc: " ↑", desc: " ↓" }[header.column.getIsSorted() as string] ?? (
+                      header.column.getCanSort() ? <span className="text-muted/40"> ↕</span> : null
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -78,13 +80,14 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   className={cn(
+                    "border-line-subtle transition-colors hover:bg-cream-alt/40",
                     onRowClick && "cursor-pointer",
                     rowClassName?.(row.original)
                   )}
                   onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-3.5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

@@ -27,8 +27,9 @@ export default function FarmaciaPage() {
   }
 
   return (
-    <section className="bg-card rounded-xl border border-line p-5 max-w-2xl">
-      <h2 className="font-semibold font-display mb-4">Dados da farmácia</h2>
+    <section className="card-premium max-w-2xl p-6">
+      <h2 className="mb-1 font-display text-subtitle font-semibold text-ink">Dados da farmácia</h2>
+      <p className="mb-5 text-caption text-secondary">Informações cadastrais usadas em documentos e atribuição.</p>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField

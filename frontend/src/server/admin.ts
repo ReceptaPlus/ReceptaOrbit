@@ -70,7 +70,9 @@ const inviteSchema = z.object({
 });
 
 export async function inviteUserAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
-  const session = await requireCan("manage_users");
+  // Ação de PLATAFORMA: cria vínculo em pharmacyId arbitrário → exige access_admin
+  // (manage_users sozinho permitiria a um MANAGER tenant convidar p/ outra farmácia).
+  const session = await requireCan("access_admin");
   const parsed = inviteSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
