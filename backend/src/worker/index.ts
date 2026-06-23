@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { prisma } from "../db/client.js";
 import { ingestMessage } from "../domain/ingestion/ingest.js";
 import { extractMessages, normalizeEventName } from "../domain/ingestion/evolution-payload.js";

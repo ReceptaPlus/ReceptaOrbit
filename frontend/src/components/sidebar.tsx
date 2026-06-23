@@ -104,10 +104,10 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       {/* Marca + farmácia */}
       <div className="relative z-10 px-3 xl:px-5 pt-6 pb-4 flex items-center gap-3 justify-center xl:justify-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/mark-degrade.svg" alt="Recepta" className="h-9 w-9 shrink-0 xl:hidden" />
+        <img src="/brand/mark-gradient.svg" alt="Recepta" className="h-9 w-9 shrink-0 xl:hidden" />
         <div className="hidden xl:flex min-w-0 items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mark-branca.svg" alt="" className="h-8 w-8 shrink-0" />
+          <img src="/brand/mark-white.svg" alt="" className="h-8 w-8 shrink-0" />
           <div className="min-w-0">
             <p className="truncate font-display text-subtitle font-bold tracking-tight text-white">
               Recepta <span className="font-normal text-white/70">Orbit</span>

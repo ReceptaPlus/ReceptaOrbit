@@ -1,8 +1,9 @@
 import "server-only";
-import { getEvolutionConfig } from "./config";
+import { getEvolutionConfig, getWebhookSetup } from "./config";
 
 /* Cliente REST da Evolution API (pareamento WhatsApp). Usado pelas server actions da
-   tela de configuração. Mantém o accessToken/apikey fora do client bundle. */
+   tela de configuração. Mantém o apikey fora do client bundle.
+   Multi-tenant: toda função recebe o `instance` (1 instância por farmácia). */
 
 type WhatsAppState = "DISCONNECTED" | "PAIRING" | "CONNECTED" | "DOWN";
 
@@ -25,9 +26,8 @@ export function mapState(raw: unknown): WhatsAppState {
 }
 
 /** Estado vivo da instância na Evolution. Null se indeterminado. */
-export async function getConnectionState(): Promise<WhatsAppState | null> {
+export async function getConnectionState(instance: string): Promise<WhatsAppState | null> {
   try {
-    const { instance } = getEvolutionConfig();
     const r = await call(`/instance/connectionState/${instance}`);
     if (!r.ok) return null;
     const j = await r.json();
@@ -37,9 +37,25 @@ export async function getConnectionState(): Promise<WhatsAppState | null> {
   }
 }
 
-/** Garante que a instância existe (cria se 404 no connect). */
-async function ensureInstance(): Promise<void> {
-  const { instance } = getEvolutionConfig();
+/** Registra o nosso webhook na instância (idempotente; best-effort). Sem URL pública
+    configurada, pula — o pareamento segue, mas não chegam eventos automaticamente. */
+async function setWebhook(instance: string): Promise<void> {
+  const setup = getWebhookSetup();
+  if (!setup) return;
+  try {
+    await call(`/webhook/set/${instance}`, {
+      method: "POST",
+      body: JSON.stringify({
+        webhook: { enabled: true, url: setup.url, webhookByEvents: false, byEvents: false, events: setup.events },
+      }),
+    });
+  } catch {
+    // best-effort: não bloqueia o pareamento se a configuração do webhook falhar.
+  }
+}
+
+/** Garante que a instância existe (cria se 404) e (re)afirma o webhook. */
+async function ensureInstance(instance: string): Promise<void> {
   const state = await call(`/instance/connectionState/${instance}`);
   if (state.status === 404) {
     await call(`/instance/create`, {
@@ -47,6 +63,7 @@ async function ensureInstance(): Promise<void> {
       body: JSON.stringify({ instanceName: instance, integration: "WHATSAPP-BAILEYS", qrcode: true }),
     });
   }
+  await setWebhook(instance);
 }
 
 export interface PairingResult {
@@ -54,10 +71,9 @@ export interface PairingResult {
   pairingCode: string | null;
 }
 
-/** Inicia o pareamento e devolve o QR/código. */
-export async function connectInstance(): Promise<PairingResult> {
-  await ensureInstance();
-  const { instance } = getEvolutionConfig();
+/** Inicia o pareamento da instância do tenant e devolve o QR/código. */
+export async function connectInstance(instance: string): Promise<PairingResult> {
+  await ensureInstance(instance);
   const r = await call(`/instance/connect/${instance}`);
   if (!r.ok) throw new Error(`Evolution connect falhou (HTTP ${r.status})`);
   const j = await r.json();
@@ -66,8 +82,7 @@ export async function connectInstance(): Promise<PairingResult> {
   return { qr, pairingCode: j?.pairingCode ?? j?.code ?? null };
 }
 
-/** Desconecta (logout) a instância. */
-export async function logoutInstance(): Promise<void> {
-  const { instance } = getEvolutionConfig();
+/** Desconecta (logout) a instância do tenant. */
+export async function logoutInstance(instance: string): Promise<void> {
   await call(`/instance/logout/${instance}`, { method: "DELETE" });
 }

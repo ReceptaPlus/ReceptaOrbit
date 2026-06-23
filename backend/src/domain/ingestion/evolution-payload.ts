@@ -1,6 +1,8 @@
 /* Extração defensiva do payload do webhook Evolution (Baileys).
-   ⚠️ Shape baseado na doc/observação da Evolution v2; será AJUSTADO quando
-   capturarmos um MESSAGES_UPSERT real (o WebhookEvent guarda o bruto p/ replay).
+   Coberto por replay-test contra shapes documentados da Evolution v2
+   (evolution-payload.test.ts). ⚠️ Sign-off final ainda exige UM payload REAL
+   capturado em prod — rode `npm run validate:webhook` sobre os webhook_events
+   brutos quando o primeiro MESSAGES_UPSERT real chegar.
    Tudo opcional + defensivo: payload de WhatsApp é heterogêneo (texto, mídia, etc.). */
 
 export interface NormalizedMessage {
@@ -17,7 +19,35 @@ export function normalizeEventName(event: unknown): string {
   return String(event ?? "").toLowerCase().replace(/_/g, ".");
 }
 
-/** Texto de uma mensagem Baileys, cobrindo os tipos mais comuns. Mídia → rótulo. */
+/** Baileys aninha a mensagem real dentro de wrappers (ephemeral, viewOnce, editada,
+    documento-com-legenda). Desembrulha até chegar no conteúdo. */
+export function unwrapMessage(message: any): any {
+  let m = message;
+  for (let i = 0; i < 4 && m && typeof m === "object"; i++) {
+    const inner =
+      m.ephemeralMessage?.message ??
+      m.viewOnceMessage?.message ??
+      m.viewOnceMessageV2?.message ??
+      m.viewOnceMessageV2Extension?.message ??
+      m.documentWithCaptionMessage?.message ??
+      m.editedMessage?.message;
+    if (!inner) break;
+    m = inner;
+  }
+  return m;
+}
+
+/** Mensagens sem conteúdo de conversa (protocolo/reação/chave) — não viram Message.
+    protocolMessage = revoke/delete/history-sync; reactionMessage = 👍 noutra msg. */
+export function isNonContentMessage(message: any): boolean {
+  if (!message || typeof message !== "object") return true;
+  if (message.protocolMessage || message.reactionMessage || message.senderKeyDistributionMessage) return true;
+  // messageContextInfo sozinho (sem conteúdo real) também é ruído.
+  if (message.messageContextInfo && Object.keys(message).length === 1) return true;
+  return false;
+}
+
+/** Texto de uma mensagem Baileys (já desembrulhada), cobrindo os tipos mais comuns. Mídia → rótulo. */
 function extractText(message: any): string {
   if (!message || typeof message !== "object") return "";
   if (typeof message.conversation === "string") return message.conversation;
@@ -47,20 +77,27 @@ function toDate(ts: unknown): Date {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
-/** Um MESSAGES_UPSERT pode trazer `data` como objeto único ou array. Normaliza p/ lista. */
+/** Um MESSAGES_UPSERT pode trazer `data` como objeto único, array, ou `{ messages: [...] }`.
+    Normaliza p/ lista, desembrulha wrappers e descarta ruído sem conteúdo. */
 export function extractMessages(payload: any): NormalizedMessage[] {
   const data = payload?.data;
   if (!data) return [];
-  const items = Array.isArray(data) ? data : [data];
+  const rawItems = Array.isArray(data)
+    ? data
+    : Array.isArray(data.messages)
+      ? data.messages
+      : [data];
 
-  return items
-    .filter((it) => it && it.key)
-    .map((it): NormalizedMessage => ({
+  return rawItems
+    .filter((it: any) => it && it.key)
+    .map((it: any) => ({ it, message: unwrapMessage(it.message) }))
+    .filter(({ message }: { message: any }) => !isNonContentMessage(message))
+    .map(({ it, message }: { it: any; message: any }): NormalizedMessage => ({
       providerMessageId: it.key?.id ?? null,
       remoteJid: it.key?.remoteJid,
       fromMe: Boolean(it.key?.fromMe),
       pushName: it.pushName ?? null,
-      text: extractText(it.message),
+      text: extractText(message),
       sentAt: toDate(it.messageTimestamp),
     }));
 }

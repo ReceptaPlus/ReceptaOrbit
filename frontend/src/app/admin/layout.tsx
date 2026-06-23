@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/mark-degrade.svg" alt="Recepta" className="h-8 w-8" />
+              <img src="/brand/mark-gradient.svg" alt="Recepta" className="h-8 w-8" />
               <div className="leading-tight">
                 <p className="font-display text-subtitle font-bold text-ink">Recepta Orbit</p>
                 <p className="text-micro font-medium uppercase tracking-[0.14em] text-brand-500">Admin · Plataforma</p>

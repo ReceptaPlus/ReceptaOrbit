@@ -45,6 +45,27 @@ function normalize(name: string): string {
     .replace(/[^a-z0-9]/g, ""); // só alfanumérico
 }
 
+/** Lista os Clients do Agente (id+nome) p/ o admin vincular a uma farmácia. [] se sem Agente. */
+export async function listAgenteClients(): Promise<{ id: string; name: string }[]> {
+  const pool = getPool();
+  if (!pool) return [];
+  try {
+    const { rows } = await pool.query<{ id: string; name: string }>(`select id, name from "Client" order by name`);
+    return rows;
+  } catch (err) {
+    console.error("[agente/ads] listAgenteClients falhou:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+/** Nome do Client por id (p/ exibir no card). Null se não existir. */
+async function clientNameById(id: string): Promise<string | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  const { rows } = await pool.query<{ name: string }>(`select name from "Client" where id = $1`, [id]);
+  return rows[0]?.name ?? null;
+}
+
 /** Resolve o Client do Agente por nome normalizado (match exato após normalizar). */
 async function resolveClientIdByName(name: string): Promise<{ id: string; name: string } | null> {
   const pool = getPool();
@@ -92,6 +113,24 @@ async function googleMetrics(clientId: string, days: number): Promise<ProviderMe
     [clientId, days],
   );
   return rows[0] ?? ZERO;
+}
+
+/** Métricas de anúncio (Meta+Google) por id de Client (vínculo explícito da farmácia).
+    Null = sem Agente, id inexistente, ou falha. Caminho preferido (vs. match por nome). */
+export async function getAdsByClientId(clientId: string, days = 7): Promise<AdsSummary | null> {
+  try {
+    if (!getPool()) return null;
+    const name = await clientNameById(clientId);
+    if (name === null) return null; // id não existe mais no Agente
+    const [meta, google] = await Promise.all([
+      metaMetrics(clientId, days),
+      googleMetrics(clientId, days),
+    ]);
+    return { clientId, clientName: name, periodDays: days, meta, google };
+  } catch (err) {
+    console.error("[agente/ads] leitura por id falhou:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 /** Métricas de anúncio (Meta+Google) da farmácia, por nome. Null = sem Agente

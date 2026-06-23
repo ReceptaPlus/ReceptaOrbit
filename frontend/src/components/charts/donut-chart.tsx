@@ -8,7 +8,7 @@ interface DonutDatum {
   color: string;
 }
 
-export function DonutChart({ data, height = 168 }: { data: DonutDatum[]; height?: number }) {
+export function DonutChart({ data, height = 168, centerLabel = "vendas" }: { data: DonutDatum[]; height?: number; centerLabel?: string }) {
   const total = data.reduce((a, d) => a + d.value, 0);
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-5">
@@ -38,7 +38,7 @@ export function DonutChart({ data, height = 168 }: { data: DonutDatum[]; height?
           <span className="font-display text-title font-bold text-ink" data-numeric>
             {total}
           </span>
-          <span className="text-micro text-muted">vendas</span>
+          <span className="text-micro text-muted">{centerLabel}</span>
         </div>
       </div>
       <ul className="w-full min-w-0 space-y-2">

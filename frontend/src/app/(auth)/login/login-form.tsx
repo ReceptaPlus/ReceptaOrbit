@@ -1,17 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Link from "next/link";
 import { loginAction, type LoginState } from "@/server/auth/login";
 
 const initialState: LoginState = {};
 
-export function LoginForm({ demo }: { demo: boolean }) {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   return (
-    <form action={demo ? undefined : formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5">
       <div>
         <label htmlFor="email" className="mb-1.5 block text-small font-medium text-ink">
           E-mail
@@ -21,8 +20,7 @@ export function LoginForm({ demo }: { demo: boolean }) {
           name="email"
           type="email"
           autoComplete="username"
-          required={!demo}
-          defaultValue={demo ? "camila@drogariasp.com.br" : undefined}
+          required
           className="h-11 w-full rounded-lg border border-line bg-white/80 px-3.5 text-body outline-none backdrop-blur transition-shadow focus:border-brand-500 focus:shadow-focus"
         />
       </div>
@@ -37,8 +35,7 @@ export function LoginForm({ demo }: { demo: boolean }) {
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
-            required={!demo}
-            defaultValue={demo ? "demodemo" : undefined}
+            required
             className="h-11 w-full rounded-lg border border-line bg-white/80 px-3.5 pr-11 text-body outline-none backdrop-blur transition-shadow focus:border-brand-500 focus:shadow-focus"
           />
           <button
@@ -60,28 +57,13 @@ export function LoginForm({ demo }: { demo: boolean }) {
         </p>
       ) : null}
 
-      {demo ? (
-        <Link
-          href="/dashboard"
-          className="flex h-11 w-full items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-body font-semibold text-white shadow-[0_4px_16px_rgba(212,67,44,0.25)] transition-all hover:scale-[1.01] active:scale-[.99]"
-        >
-          Entrar
-        </Link>
-      ) : (
-        <button
-          type="submit"
-          disabled={pending}
-          className="h-11 w-full rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-body font-semibold text-white shadow-[0_4px_16px_rgba(212,67,44,0.25)] transition-all hover:scale-[1.01] active:scale-[.99] disabled:pointer-events-none disabled:opacity-60"
-        >
-          {pending ? "Entrando…" : "Entrar"}
-        </button>
-      )}
-
-      {demo && (
-        <p className="rounded-lg border border-line-subtle bg-cream-alt/50 px-3 py-2 text-center text-caption text-secondary">
-          Modo demonstração — credenciais pré-preenchidas, clique em <strong>Entrar</strong>.
-        </p>
-      )}
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-11 w-full rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-body font-semibold text-white shadow-[0_4px_16px_rgba(212,67,44,0.25)] transition-all hover:scale-[1.01] active:scale-[.99] disabled:pointer-events-none disabled:opacity-60"
+      >
+        {pending ? "Entrando…" : "Entrar"}
+      </button>
     </form>
   );
 }

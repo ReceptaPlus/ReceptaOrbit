@@ -1,65 +1,16 @@
-"use client";
-
 import Link from "next/link";
 import { KpiCard } from "@/components/kpi-card";
-import { AreaChart } from "@/components/charts/area-chart";
-import { DonutChart } from "@/components/charts/donut-chart";
 import { BarChart } from "@/components/charts/bar-chart";
 import { IconCart, IconChat, IconUsers } from "@/components/icons";
+import { getDashboardVolumeVM, getAdsCardsVM } from "@/modules/dashboard/queries";
+import type { ProviderMetrics } from "@/server/agente/ads";
 
-/* Dashboard operacional — espelha o protótipo premium (Lovable). Dados fictícios
-   (modo demo). A informação é protagonista; a atmosfera fica no fundo. */
+/* Dashboard operacional — V1 (ingestão, sem IA). Métricas REAIS de volume
+   (conversas, contatos, mensagens) do tenant + cards de anúncio (Meta/Google) quando
+   o Agente está configurado. Receita/atribuição/vendas chegam com o módulo de IA. */
 
-const KPIS = [
-  { label: "Conversas abertas", value: "248", delta: { value: "12%", direction: "up" as const }, hint: "vs. 7d", accent: true, icon: <IconChat size={16} /> },
-  { label: "Conversas encerradas", value: "1.082", delta: { value: "4.8%", direction: "up" as const }, hint: "vs. 7d" },
-  { label: "Conversão", value: "18.4%", delta: { value: "1.9pp", direction: "up" as const }, hint: "vs. 7d" },
-  { label: "Receita total", value: "R$ 113,7K", delta: { value: "22%", direction: "up" as const }, hint: "vs. 7d", accent: true, icon: <IconCart size={16} /> },
-  { label: "Ticket médio", value: "R$ 184", delta: { value: "2.1%", direction: "down" as const }, hint: "vs. 7d" },
-  { label: "Vendas confirmadas", value: "612", delta: { value: "8.4%", direction: "up" as const }, hint: "vs. 7d" },
-  { label: "Vendas pendentes", value: "47", delta: { value: "12%", direction: "down" as const }, hint: "aguardando" },
-  { label: "Clientes ativos", value: "3.412", delta: { value: "5.6%", direction: "up" as const }, hint: "no mês", accent: true, icon: <IconUsers size={16} /> },
-];
-
-const REVENUE = [
-  { dia: "14/06", receita: 12.4, comissao: 1.9 },
-  { dia: "15/06", receita: 14.1, comissao: 2.1 },
-  { dia: "16/06", receita: 13.2, comissao: 2.0 },
-  { dia: "17/06", receita: 16.8, comissao: 2.5 },
-  { dia: "18/06", receita: 18.9, comissao: 2.8 },
-  { dia: "19/06", receita: 17.3, comissao: 2.6 },
-  { dia: "20/06", receita: 20.9, comissao: 3.1 },
-];
-
-const ORIGEM = [
-  { label: "Meta Ads", value: 268, color: "#D4432C" },
-  { label: "Google Ads", value: 184, color: "#D97055" },
-  { label: "Instagram", value: 96, color: "#6FAF8F" },
-  { label: "WhatsApp", value: 64, color: "#E89580" },
-];
-
-const CONFIRMADAS = [
-  { label: "14/06", value: 74 },
-  { label: "15/06", value: 82 },
-  { label: "16/06", value: 79 },
-  { label: "17/06", value: 96 },
-  { label: "18/06", value: 108 },
-  { label: "19/06", value: 91 },
-  { label: "20/06", value: 112 },
-];
-
-const CAMPANHAS = [
-  { campanha: "Genéricos Junho", origem: "Meta Ads", conversao: "21.4%", receita: "R$ 38,2K", up: true },
-  { campanha: "Vitaminas Search", origem: "Google Ads", conversao: "18.9%", receita: "R$ 27,5K", up: true },
-  { campanha: "Remarketing Maio", origem: "Meta Ads", conversao: "14.2%", receita: "R$ 19,8K", up: false },
-  { campanha: "Marca Institucional", origem: "Google Ads", conversao: "11.7%", receita: "R$ 12,1K", up: true },
-];
-
-const ALERTAS = [
-  { tone: "warning", title: "8 classificações de baixa confiança", desc: "Conversas abaixo do limiar de 85% aguardam revisão manual." },
-  { tone: "info", title: "Pico de demanda em Genéricos", desc: "Volume 34% acima da média nas últimas 24h — considere reforçar estoque." },
-  { tone: "danger", title: "12 vendas pendentes há +24h", desc: "Confirmação automática expirou. Revise para não perder atribuição." },
-];
+const nf = (n: number) => n.toLocaleString("pt-BR");
+const money = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function Card({ title, action, children, className = "" }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
@@ -75,7 +26,34 @@ function Card({ title, action, children, className = "" }: { title?: string; act
   );
 }
 
-export default function DashboardPage() {
+function AdsCard({ provider, m }: { provider: string; m: ProviderMetrics }) {
+  const ctr = m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0;
+  return (
+    <div className="rounded-lg border border-line-subtle bg-white/50 p-4">
+      <div className="flex items-center justify-between">
+        <p className="font-display text-small font-semibold text-ink">{provider}</p>
+        <span className="text-micro text-muted">7 dias</span>
+      </div>
+      <p className="mt-2 font-display text-title font-bold text-ink" data-numeric>{money(m.spend)}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-caption">
+        <div><p className="text-muted">Impressões</p><p className="font-semibold text-ink" data-numeric>{nf(m.impressions)}</p></div>
+        <div><p className="text-muted">Cliques</p><p className="font-semibold text-ink" data-numeric>{nf(m.clicks)}</p></div>
+        <div><p className="text-muted">CTR</p><p className="font-semibold text-ink" data-numeric>{ctr.toFixed(1)}%</p></div>
+      </div>
+    </div>
+  );
+}
+
+export default async function DashboardPage() {
+  const [vol, ads] = await Promise.all([getDashboardVolumeVM(), getAdsCardsVM(7)]);
+
+  const kpis = [
+    { label: "Conversas abertas", value: nf(vol.activeConversations), hint: "ciclos ativos", accent: true, icon: <IconChat size={16} /> },
+    { label: "Novos contatos", value: nf(vol.newContacts7d), hint: "últimos 7 dias", icon: <IconUsers size={16} /> },
+    { label: "Mensagens", value: nf(vol.messages7d), hint: "últimos 7 dias", icon: <IconChat size={16} /> },
+    { label: "Conversas encerradas", value: nf(vol.closedCycles7d), hint: "últimos 7 dias" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Banner de boas-vindas */}
@@ -87,20 +65,19 @@ export default function DashboardPage() {
               Sua farmácia em tempo real
             </span>
             <h1 className="mt-3 font-display text-display-lg font-bold tracking-tight text-ink">
-              Bem-vinda, Camila
+              Conversas do WhatsApp, num só lugar
             </h1>
             <p className="mt-1.5 max-w-md text-body text-secondary">
-              Conversas do WhatsApp viram vendas, atribuição de campanha e clientes recorrentes —
-              tudo num só lugar.
+              Acompanhe o volume de atendimento da sua farmácia. Atribuição de campanha e
+              vendas entram com o módulo de IA.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/conversas" className="btn-primary !h-10 text-small">Ver conversas</Link>
-              <Link href="/vendas" className="inline-flex h-10 items-center rounded-md border border-line bg-white/70 px-3.5 text-small font-medium text-secondary backdrop-blur transition-colors hover:border-brand-400 hover:text-brand-500">
-                Relatório de vendas
+              <Link href="/clientes" className="inline-flex h-10 items-center rounded-md border border-line bg-white/70 px-3.5 text-small font-medium text-secondary backdrop-blur transition-colors hover:border-brand-400 hover:text-brand-500">
+                Ver clientes
               </Link>
             </div>
           </div>
-          {/* Imagem da marca (some no mobile p/ não brigar com o texto) */}
           <div className="relative hidden w-[42%] max-w-md shrink-0 sm:block">
             <span className="absolute inset-0 z-10 bg-gradient-to-r from-white via-white/40 to-transparent" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,89 +92,50 @@ export default function DashboardPage() {
 
       <header className="animate-fade-in">
         <h2 className="font-display text-title font-bold tracking-tight text-ink">Dashboard operacional</h2>
-        <p className="mt-1 text-body text-secondary">Visão consolidada de conversas, vendas e performance comercial.</p>
+        <p className="mt-1 text-body text-secondary">Volume de conversas e contatos do WhatsApp da sua farmácia.</p>
       </header>
 
-      {/* KPIs */}
+      {/* KPIs reais de volume */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {KPIS.map((k, i) => (
+        {kpis.map((k, i) => (
           <KpiCard key={k.label} {...k} index={i} />
         ))}
       </div>
 
-      {/* Receita + Origem */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Evolução de receita" className="lg:col-span-2" action={<span className="text-caption text-muted">Receita vs. comissões — 7 dias (R$ mil)</span>}>
-          <AreaChart
-            data={REVENUE}
-            xKey="dia"
-            series={[
-              { key: "receita", label: "Receita", color: "#D4432C" },
-              { key: "comissao", label: "Comissões", color: "#6FAF8F" },
-            ]}
-            format={(v) => `R$ ${v.toFixed(1)}K`}
-          />
+        {/* Mensagens por dia (real) */}
+        <Card title="Mensagens por dia" className="lg:col-span-2" action={<span className="text-caption text-muted">Últimos 7 dias</span>}>
+          <BarChart data={vol.msgsPerDay} height={200} unit="msgs" />
         </Card>
-        <Card title="Vendas por origem" action={<span className="text-caption text-muted">Distribuição</span>}>
-          <DonutChart data={ORIGEM} />
+
+        {/* Anúncios (real, via Agente) ou aviso */}
+        <Card title="Investimento em anúncios">
+          {ads ? (
+            <div className="space-y-3">
+              <AdsCard provider="Meta Ads" m={ads.meta} />
+              <AdsCard provider="Google Ads" m={ads.google} />
+            </div>
+          ) : (
+            <p className="text-caption text-secondary">
+              Sem dados de anúncio para esta farmácia. Conecte o Agente de mídia para ver
+              investimento e desempenho de Meta e Google Ads aqui.
+            </p>
+          )}
         </Card>
       </div>
 
-      {/* Campanhas + Alertas */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Performance comercial por campanha" className="lg:col-span-2">
-          <div className="overflow-hidden">
-            <table className="w-full text-small">
-              <thead>
-                <tr className="border-b border-line text-left text-caption uppercase tracking-wide text-muted">
-                  <th className="pb-2.5 font-medium">Campanha</th>
-                  <th className="pb-2.5 font-medium">Origem</th>
-                  <th className="pb-2.5 font-medium text-right">Conversão</th>
-                  <th className="pb-2.5 font-medium text-right">Receita</th>
-                </tr>
-              </thead>
-              <tbody>
-                {CAMPANHAS.map((c) => (
-                  <tr key={c.campanha} className="border-b border-line-subtle transition-colors last:border-0 hover:bg-cream-alt/50">
-                    <td className="py-3 font-medium text-ink">{c.campanha}</td>
-                    <td className="py-3 text-secondary">{c.origem}</td>
-                    <td className="py-3 text-right" data-numeric>
-                      <span className={c.up ? "text-success-text" : "text-danger-text"}>{c.up ? "▲" : "▼"} {c.conversao}</span>
-                    </td>
-                    <td className="py-3 text-right font-semibold text-ink" data-numeric>{c.receita}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card title="Alertas da IA">
-          <ul className="space-y-3">
-            {ALERTAS.map((a) => {
-              const tone =
-                a.tone === "warning"
-                  ? "bg-warning-bg text-warning-text"
-                  : a.tone === "danger"
-                    ? "bg-danger-bg text-danger-text"
-                    : "bg-info-bg text-info-text";
-              return (
-                <li key={a.title} className="flex gap-3 rounded-lg border border-line-subtle bg-white/40 p-3">
-                  <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-caption font-bold ${tone}`}>!</span>
-                  <div className="min-w-0">
-                    <p className="text-small font-medium text-ink">{a.title}</p>
-                    <p className="mt-0.5 text-caption text-secondary">{a.desc}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-      </div>
-
-      {/* Confirmadas por dia */}
-      <Card title="Vendas confirmadas por dia" action={<Link href="/vendas" className="text-caption font-medium text-brand-500 hover:text-brand-600">Ver vendas →</Link>}>
-        <BarChart data={CONFIRMADAS} height={200} unit="vendas" />
+      {/* Vendas/atribuição — dependem da IA */}
+      <Card title="Vendas e atribuição">
+        <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-line bg-cream-alt/30 p-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-2.5 py-0.5 text-micro font-semibold text-info-text">
+            <IconCart size={13} /> Em breve
+          </span>
+          <p className="text-small font-medium text-ink">Receita, conversão e atribuição de campanha</p>
+          <p className="max-w-xl text-caption text-secondary">
+            Estas métricas nascem da análise das conversas pela IA (identificação de venda,
+            origem e valor). Entram quando o módulo de vendas/IA for ativado.
+          </p>
+        </div>
       </Card>
     </div>
   );

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/domain/auth/password.js";
 import { generateInviteToken, inviteExpiry } from "../src/domain/auth/invitations.js";
@@ -9,10 +10,14 @@ import { generateInviteToken, inviteExpiry } from "../src/domain/auth/invitation
    Idempotente: upsert por chaves naturais (email, slug, [type,version], [pharmacy,user]). */
 const prisma = new PrismaClient();
 
-const DEFAULT_PASSWORD = "Recepta@123";
+/* SEGURANÇA: nunca embutir senha fraca fixa no repositório (este seed roda contra o
+   Postgres real). Defina SEED_PASSWORD no ambiente; se ausente, gera uma forte e a
+   imprime UMA vez (anote). PASSWORD_PEPPER deve ser o mesmo do login para autenticar. */
+const providedPassword = process.env.SEED_PASSWORD;
+const seedPassword = providedPassword ?? randomBytes(12).toString("base64url");
 
 async function main() {
-  const passwordHash = await hashPassword(DEFAULT_PASSWORD);
+  const passwordHash = await hashPassword(seedPassword);
 
   // ── Documentos legais ─────────────────────────────────────────────────────
   const terms = await prisma.legalDocument.upsert({
@@ -228,6 +233,11 @@ async function main() {
   }
 
   console.log("Seed concluído: 3 farmácias, 5 usuários, 6 memberships, staff, convite, aceites, auditoria, 3 conexões WhatsApp, 1 contato, 1 ciclo, 3 mensagens.");
+  console.log(
+    providedPassword
+      ? "Senha das contas seedadas: definida via SEED_PASSWORD."
+      : `Senha das contas seedadas (gerada — anote, não será mostrada de novo): ${seedPassword}`,
+  );
 }
 
 main()

@@ -121,3 +121,35 @@ export async function inviteUserAction(_prev: AdminFormState, formData: FormData
   revalidatePath("/admin/usuarios");
   return { ok: true, inviteUrl: `/convite/${token}` };
 }
+
+/* Vincula uma farmácia ao Client do Agente-Meta-Ads (resolve os cards de anúncio
+   por id explícito). agenteClientId vazio = desvincular (volta ao fallback por nome). */
+export async function setPharmacyAdsClientAction(formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("access_admin");
+  const pharmacyId = String(formData.get("pharmacyId") ?? "");
+  const raw = String(formData.get("agenteClientId") ?? "").trim();
+  const agenteClientId = raw === "" ? null : raw;
+  if (!pharmacyId) return { error: "Farmácia inválida." };
+
+  try {
+    const pharmacy = await db.pharmacy.update({
+      where: { id: pharmacyId },
+      data: { agenteClientId },
+      select: { id: true },
+    });
+    await writeAudit({
+      pharmacyId: pharmacy.id,
+      actorUserId: session.userId,
+      onBehalfOf: pharmacy.id,
+      action: "PHARMACY_UPDATED",
+      entityType: "Pharmacy",
+      entityId: pharmacy.id,
+      after: { agenteClientId },
+    });
+  } catch {
+    return { error: "Falha ao vincular o cliente de anúncios." };
+  }
+  revalidatePath("/admin/farmacias");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}

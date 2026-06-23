@@ -2,10 +2,8 @@ import Link from "next/link";
 import { LoginForm } from "./login-form";
 
 /* Login premium — hero da marca (degradê + grid curvado) à esquerda, formulário
-   em vidro sobre atmosfera à direita. Modo demo pré-preenche e entra direto. */
+   em vidro sobre atmosfera à direita. */
 export default function LoginPage() {
-  const demo = !process.env.DATABASE_URL;
-
   return (
     <main className="relative grid min-h-screen flex-1 overflow-hidden lg:grid-cols-2">
       {/* Hero da marca */}
@@ -13,7 +11,7 @@ export default function LoginPage() {
         {/* Imagem das teclas Rx (Brand) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/brand/login-hero.jpg"
+          src="/brand/mark-hero.jpg"
           alt=""
           aria-hidden
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -24,7 +22,7 @@ export default function LoginPage() {
 
         <div className="relative flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mark-branca.svg" alt="Recepta" className="h-10 w-10" />
+          <img src="/brand/mark-white.svg" alt="Recepta" className="h-10 w-10" />
           <span className="font-display text-title font-semibold">Recepta <span className="font-normal text-white/70">Orbit</span></span>
         </div>
 
@@ -48,7 +46,7 @@ export default function LoginPage() {
         <div className="relative z-10 w-full max-w-sm animate-fade-in-up">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/mark-degrade.svg" alt="Recepta" className="h-9 w-9" />
+            <img src="/brand/mark-gradient.svg" alt="Recepta" className="h-9 w-9" />
             <span className="font-display text-title font-semibold tracking-tight text-ink">
               Recepta <span className="font-normal text-secondary">Orbit</span>
             </span>
@@ -57,7 +55,7 @@ export default function LoginPage() {
           <h1 className="font-display text-display font-bold text-ink">Entre na sua farmácia</h1>
           <p className="mb-8 mt-1.5 text-body text-neutral-600">Acesso criado pela equipe Recepta.</p>
 
-          <LoginForm demo={demo} />
+          <LoginForm />
 
           <Link
             href="/recuperar-senha"

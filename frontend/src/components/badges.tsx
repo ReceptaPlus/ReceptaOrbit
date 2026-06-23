@@ -1,15 +1,12 @@
+import type { AttributionSource, CycleStatus, Outcome, Stage } from "@/modules/conversations/types";
+import type { SaleStatus } from "@/modules/sales/types";
 import {
-  AttributionSource,
-  CycleStatus,
-  Outcome,
-  SaleStatus,
-  Stage,
   SALE_STATUS_LABEL,
   SOURCE_LABEL,
   STAGE_LABEL,
   STATUS_LABEL,
   OUTCOME_LABEL,
-} from "@/lib/mock-data";
+} from "@/lib/constants";
 
 const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap";
 

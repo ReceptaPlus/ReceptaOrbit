@@ -3,22 +3,15 @@ import { db } from "@/server/db";
 import { hashToken } from "@/server/auth/tokens";
 import { InviteForm } from "./invite-form";
 
-const DEMO = !process.env.DATABASE_URL;
-
 export default async function ConvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params; // Next 16: params é Promise
 
-  // Demo: sem banco de convites — mostra o fluxo de primeiro acesso direto.
-  let valid = DEMO;
-  let name = "Daniel Aulicino";
-  if (!DEMO) {
-    const invite = await db.userInvitation.findFirst({
-      where: { tokenHash: hashToken(token), usedAt: null, expiresAt: { gt: new Date() } },
-      include: { user: { select: { name: true } } },
-    });
-    valid = invite !== null;
-    name = invite?.user.name ?? "";
-  }
+  const invite = await db.userInvitation.findFirst({
+    where: { tokenHash: hashToken(token), usedAt: null, expiresAt: { gt: new Date() } },
+    include: { user: { select: { name: true } } },
+  });
+  const valid = invite !== null;
+  const name = invite?.user.name ?? "";
 
   return (
     <main className="relative grid min-h-screen flex-1 overflow-hidden lg:grid-cols-2">
@@ -33,7 +26,7 @@ export default async function ConvitePage({ params }: { params: Promise<{ token:
 
         <div className="relative flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mark-branca.svg" alt="Recepta" className="h-10 w-10" />
+          <img src="/brand/mark-white.svg" alt="Recepta" className="h-10 w-10" />
           <span className="font-display text-title font-semibold">Recepta <span className="font-normal text-white/70">Orbit</span></span>
         </div>
 
@@ -56,14 +49,14 @@ export default async function ConvitePage({ params }: { params: Promise<{ token:
         <div className="relative z-10 w-full max-w-sm animate-fade-in-up">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/mark-degrade.svg" alt="Recepta" className="h-9 w-9" />
+            <img src="/brand/mark-gradient.svg" alt="Recepta" className="h-9 w-9" />
             <span className="font-display text-title font-semibold tracking-tight text-ink">
               Recepta <span className="font-normal text-secondary">Orbit</span>
             </span>
           </div>
 
           {valid ? (
-            <InviteForm token={token} name={name} demo={DEMO} />
+            <InviteForm token={token} name={name} />
           ) : (
             <div>
               <h1 className="font-display text-display font-bold text-ink">Convite inválido</h1>

@@ -1,9 +1,10 @@
 /* ==========================================================================
-   Recepta Orbit — Mock Data (LEGADO — EM DESATIVAÇÃO)
-   ⚠️  NÃO USAR EM CÓDIGO NOVO. Fonte canônica: src/mocks/* (formato do domínio
-   validado em docs/CONTRATOS-FRONTEND.md). Estes dados violam contratos
-   congelados (classificação inline no ciclo, ids "c-000" sentinela, staff no
-   tenant). Cada module/<x>/api.ts migra para src/mocks e este arquivo morre.
+   Recepta Orbit — PLACEHOLDER das telas de VENDAS/IA (Fase 2)
+   ⚠️  NÃO é o antigo fallback demo (removido). É dado provisório APENAS para as
+   telas que ainda não têm schema/dados reais: /vendas, /vendas/revisao e a busca
+   de contatos do command-palette. Some quando o módulo de IA/Vendas (Sale,
+   AIAnalysis, TrackingLink) existir. NÃO usar em telas já ligadas ao banco
+   (clientes, conversas, dashboard, configurações) — essas leem do Prisma (server/db).
    ========================================================================== */
 
 export type Stage =

@@ -1,14 +1,33 @@
-import { listUsers } from "@/modules/settings/api";
-import { ROLE_LABEL } from "@/lib/constants";
+import { listPharmacyUsersVM, type PharmacyUserRole, type PharmacyUserStatus } from "@/modules/settings/queries";
 
-const ROLE_STYLE: Record<string, string> = {
-  RECEPTA_ADMIN: "bg-primary-light text-primary",
-  PHARMACY_MANAGER: "bg-success-bg text-success-text",
-  PHARMACY_VIEWER: "bg-line-subtle text-secondary",
+const ROLE_LABEL: Record<PharmacyUserRole, string> = {
+  OWNER: "Dono",
+  MANAGER: "Gerente",
+  VIEWER: "Visualizador",
 };
 
-export default function UsuariosPage() {
-  const users = listUsers();
+const ROLE_STYLE: Record<PharmacyUserRole, string> = {
+  OWNER: "bg-primary-light text-primary",
+  MANAGER: "bg-success-bg text-success-text",
+  VIEWER: "bg-line-subtle text-secondary",
+};
+
+const STATUS_LABEL: Record<PharmacyUserStatus, string> = {
+  ACTIVE: "Ativo",
+  INVITED: "Convidado",
+  SUSPENDED: "Suspenso",
+  REVOKED: "Revogado",
+};
+
+const STATUS_STYLE: Record<PharmacyUserStatus, string> = {
+  ACTIVE: "bg-success-bg text-success-text",
+  INVITED: "bg-warning-bg text-warning-text",
+  SUSPENDED: "bg-cream-alt text-muted",
+  REVOKED: "bg-danger-bg text-danger-text",
+};
+
+export default async function UsuariosPage() {
+  const users = await listPharmacyUsersVM();
 
   return (
     <section className="card-premium p-0">
@@ -28,6 +47,13 @@ export default function UsuariosPage() {
             </tr>
           </thead>
           <tbody>
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-10 text-center text-secondary">
+                  Nenhum usuário vinculado a esta farmácia ainda.
+                </td>
+              </tr>
+            )}
             {users.map((u) => (
               <tr key={u.id} className="border-b border-line-subtle transition-colors last:border-0 hover:bg-cream-alt/40">
                 <td className="px-5 py-3.5">
@@ -45,14 +71,12 @@ export default function UsuariosPage() {
                   </span>
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-micro font-semibold ${
-                    u.status === "ACTIVE" ? "bg-success-bg text-success-text" : "bg-cream-alt text-muted"
-                  }`}>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-micro font-semibold ${STATUS_STYLE[u.status]}`}>
                     <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-                    {u.status === "ACTIVE" ? "Ativo" : "Suspenso"}
+                    {STATUS_LABEL[u.status]}
                   </span>
                 </td>
-                <td className="px-5 py-3.5 text-secondary">{u.lastLoginAt}</td>
+                <td className="px-5 py-3.5 text-secondary">{u.lastAccess}</td>
               </tr>
             ))}
           </tbody>

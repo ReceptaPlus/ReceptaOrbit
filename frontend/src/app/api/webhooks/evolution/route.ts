@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { getWebhookSecret } from "@/server/evolution/config";
 
@@ -16,15 +17,22 @@ function unauthorized() {
 
 export async function POST(req: Request) {
   const secret = getWebhookSecret();
-  if (secret) {
+  if (!secret) {
+    // Em produção, ausência de segredo é ERRO de config: recusa (fail-closed) p/ não
+    // aceitar eventos não autenticados. Em dev segue sem checagem (conveniência).
+    if (process.env.NODE_ENV === "production") {
+      console.error("[webhook/evolution] EVOLUTION_WEBHOOK_SECRET ausente em produção — recusando POST.");
+      return Response.json({ ok: false, error: "webhook secret not configured" }, { status: 503 });
+    }
+  } else {
     const url = new URL(req.url);
     const provided = url.searchParams.get("secret") ?? req.headers.get("x-webhook-secret");
     if (provided !== secret) return unauthorized();
   }
 
-  let payload: any;
+  let payload: Prisma.InputJsonObject;
   try {
-    payload = await req.json();
+    payload = (await req.json()) as Prisma.InputJsonObject;
   } catch {
     // Payload inválido: aceita (202) p/ a Evolution não ficar re-tentando, mas registra como FAILED.
     await db.webhookEvent.create({
@@ -33,8 +41,8 @@ export async function POST(req: Request) {
     return Response.json({ ok: true }, { status: 202 });
   }
 
-  const instanceName: string | null = payload?.instance ?? null;
-  const eventType: string | null = payload?.event ?? null;
+  const instanceName = typeof payload.instance === "string" ? payload.instance : null;
+  const eventType = typeof payload.event === "string" ? payload.event : null;
 
   // Resolve tenant pelo nome da instância (best-effort).
   let pharmacyId: string | null = null;

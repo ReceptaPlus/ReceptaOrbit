@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Link from "next/link";
 import { completeInviteAction, type InviteState } from "@/server/auth/invite";
 
 const initialState: InviteState = {};
@@ -22,16 +21,15 @@ function strength(pw: string): { pct: number; label: string; cls: string } {
   return map[s];
 }
 
-export function InviteForm({ token, name, demo }: { token: string; name: string; demo?: boolean }) {
+export function InviteForm({ token, name }: { token: string; name: string }) {
   const [state, formAction, pending] = useActionState(completeInviteAction, initialState);
   const [pw, setPw] = useState("");
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const st = strength(pw);
-  const canSubmit = Boolean(demo) && terms && privacy && pw.length >= 8;
 
   return (
-    <form action={demo ? undefined : formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5">
       <div>
         <h1 className="font-display text-display font-bold text-ink">Bem-vindo, {name.split(" ")[0]}</h1>
         <p className="mt-1.5 text-body text-neutral-600">Defina sua senha para ativar o acesso.</p>
@@ -53,7 +51,7 @@ export function InviteForm({ token, name, demo }: { token: string; name: string;
           name="password"
           type="password"
           autoComplete="new-password"
-          required={!demo}
+          required
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           className="field-premium"
@@ -69,7 +67,7 @@ export function InviteForm({ token, name, demo }: { token: string; name: string;
 
       <div>
         <label htmlFor="confirm" className="label-premium">Confirmar senha</label>
-        <input id="confirm" name="confirm" type="password" autoComplete="new-password" required={!demo} className="field-premium" />
+        <input id="confirm" name="confirm" type="password" autoComplete="new-password" required className="field-premium" />
       </div>
 
       <div className="space-y-2.5">
@@ -87,33 +85,13 @@ export function InviteForm({ token, name, demo }: { token: string; name: string;
         <p role="alert" className="text-small text-danger-text">{state.error}</p>
       ) : null}
 
-      {demo ? (
-        <Link
-          href={canSubmit ? "/dashboard" : "#"}
-          aria-disabled={!canSubmit}
-          className={`flex h-11 w-full items-center justify-center rounded-lg text-body font-semibold text-white transition-all ${
-            canSubmit
-              ? "bg-gradient-to-br from-brand-500 to-brand-600 shadow-[0_4px_16px_rgba(212,67,44,0.25)] hover:scale-[1.01]"
-              : "pointer-events-none bg-brand-500/50"
-          }`}
-        >
-          Ativar acesso
-        </Link>
-      ) : (
-        <button
-          type="submit"
-          disabled={pending}
-          className="h-11 w-full rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-body font-semibold text-white shadow-[0_4px_16px_rgba(212,67,44,0.25)] transition-all hover:scale-[1.01] active:scale-[.99] disabled:pointer-events-none disabled:opacity-60"
-        >
-          {pending ? "Ativando…" : "Ativar acesso"}
-        </button>
-      )}
-
-      {demo && (
-        <p className="rounded-lg border border-line-subtle bg-cream-alt/50 px-3 py-2 text-center text-caption text-secondary">
-          Modo demonstração — defina senha (8+), aceite os termos e ative.
-        </p>
-      )}
+      <button
+        type="submit"
+        disabled={pending || !terms || !privacy || pw.length < 8}
+        className="h-11 w-full rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-body font-semibold text-white shadow-[0_4px_16px_rgba(212,67,44,0.25)] transition-all hover:scale-[1.01] active:scale-[.99] disabled:pointer-events-none disabled:opacity-60"
+      >
+        {pending ? "Ativando…" : "Ativar acesso"}
+      </button>
     </form>
   );
 }
