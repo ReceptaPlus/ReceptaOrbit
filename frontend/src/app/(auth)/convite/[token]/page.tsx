@@ -8,10 +8,21 @@ export default async function ConvitePage({ params }: { params: Promise<{ token:
 
   const invite = await db.userInvitation.findFirst({
     where: { tokenHash: hashToken(token), usedAt: null, expiresAt: { gt: new Date() } },
-    include: { user: { select: { name: true } } },
+    include: {
+      user: {
+        select: {
+          name: true,
+          memberships: {
+            where: { status: "INVITED" },
+            select: { pharmacy: { select: { tradeName: true } } },
+          },
+        },
+      },
+    },
   });
   const valid = invite !== null;
   const name = invite?.user.name ?? "";
+  const pharmacyNames = invite?.user.memberships.map((m) => m.pharmacy.tradeName) ?? [];
 
   return (
     <main className="relative grid min-h-screen flex-1 overflow-hidden lg:grid-cols-2">
@@ -56,7 +67,7 @@ export default async function ConvitePage({ params }: { params: Promise<{ token:
           </div>
 
           {valid ? (
-            <InviteForm token={token} name={name} />
+            <InviteForm token={token} name={name} pharmacyNames={pharmacyNames} />
           ) : (
             <div>
               <h1 className="font-display text-display font-bold text-ink">Convite inválido</h1>

@@ -21,7 +21,15 @@ function strength(pw: string): { pct: number; label: string; cls: string } {
   return map[s];
 }
 
-export function InviteForm({ token, name }: { token: string; name: string }) {
+export function InviteForm({
+  token,
+  name,
+  pharmacyNames,
+}: {
+  token: string;
+  name: string;
+  pharmacyNames: string[];
+}) {
   const [state, formAction, pending] = useActionState(completeInviteAction, initialState);
   const [pw, setPw] = useState("");
   const [terms, setTerms] = useState(false);
@@ -37,12 +45,14 @@ export function InviteForm({ token, name }: { token: string; name: string }) {
 
       <input type="hidden" name="token" value={token} />
 
-      <div>
-        <label htmlFor="pharmacy" className="label-premium">Farmácia</label>
-        <select id="pharmacy" name="pharmacy" className="field-premium" defaultValue="dsp">
-          <option value="dsp">Drogaria São Paulo — Jardim Europa</option>
-        </select>
-      </div>
+      {pharmacyNames.length > 0 && (
+        <div>
+          <span className="label-premium">{pharmacyNames.length > 1 ? "Farmácias" : "Farmácia"}</span>
+          <div className="field-premium flex items-center bg-cream-alt/40 text-secondary">
+            {pharmacyNames.join(", ")}
+          </div>
+        </div>
+      )}
 
       <div>
         <label htmlFor="password" className="label-premium">Nova senha</label>
