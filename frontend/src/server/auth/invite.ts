@@ -34,6 +34,12 @@ export async function completeInviteAction(_prev: InviteState, formData: FormDat
     return { error: "Convite inválido ou expirado." };
   }
 
+  // Conta suspensa não pode se reativar via convite antigo (regaria acesso revogado).
+  const target = await db.user.findUnique({ where: { id: invite.userId }, select: { status: true } });
+  if (!target || target.status === "SUSPENDED") {
+    return { error: "Conta indisponível. Fale com a equipe Recepta." };
+  }
+
   const passwordHash = await hashPassword(parsed.data.password);
   const activeDocs = await db.legalDocument.findMany({
     where: { active: true },

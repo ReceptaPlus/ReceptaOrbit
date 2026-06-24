@@ -1,6 +1,15 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { getWebhookSecret } from "@/server/evolution/config";
+
+/* Comparação em tempo constante (evita timing attack p/ adivinhar o segredo). */
+function secretMatches(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 /* Webhook da Evolution (ingestão V1).
    Contrato: responde RÁPIDO (202), grava o payload BRUTO em webhook_events (fila
@@ -27,7 +36,7 @@ export async function POST(req: Request) {
   } else {
     const url = new URL(req.url);
     const provided = url.searchParams.get("secret") ?? req.headers.get("x-webhook-secret");
-    if (provided !== secret) return unauthorized();
+    if (!secretMatches(provided, secret)) return unauthorized();
   }
 
   let payload: Prisma.InputJsonObject;

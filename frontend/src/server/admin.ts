@@ -195,7 +195,7 @@ export async function deleteUserAction(formData: FormData): Promise<AdminFormSta
     return { error: "Falha ao excluir o usuário." };
   }
   // Ação de plataforma (sem pharmacyId único) — auditoria por tenant não se aplica.
-  console.warn(`[admin] usuário excluído: ${user.email} (por ${session.userId})`);
+  console.warn(`[admin] usuário excluído: id=${user.id} (por ${session.userId})`);
   revalidatePath("/admin/usuarios");
   return { ok: true };
 }
@@ -221,7 +221,7 @@ export async function resetUserPasswordAction(formData: FormData): Promise<Admin
   } catch {
     return { error: "Falha ao redefinir a senha." };
   }
-  console.warn(`[admin] senha redefinida: ${user.email} (por ${session.userId})`);
+  console.warn(`[admin] senha redefinida: id=${user.id} (por ${session.userId})`);
   revalidatePath("/admin/usuarios");
   return { ok: true, tempPassword };
 }

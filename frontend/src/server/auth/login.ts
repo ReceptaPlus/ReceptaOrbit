@@ -1,11 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { loginSchema } from "@/modules/auth/schemas";
 import type { SessionRole } from "@/types/domain";
 import { db } from "@/server/db";
 import { verifyPassword } from "./password";
 import { createSession, destroySession } from "./session";
+import { hitRateLimit, clearRateLimit } from "@/lib/rate-limit";
+
+const LOGIN_MAX = 10; // tentativas
+const LOGIN_WINDOW_MS = 10 * 60 * 1000; // por 10 min, por IP+email
 
 /* Login REAL: valida credencial contra o Postgres (Railway) com Argon2id, resolve
    papel/farmácia por Membership ativo (ou PlatformStaff), cria sessão JWT.
@@ -25,6 +30,16 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   const email = parsed.data.email.trim().toLowerCase();
+
+  // Rate limit anti-brute-force (por IP + email).
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  const rlKey = `login:${ip}:${email}`;
+  const rl = hitRateLimit(rlKey, LOGIN_MAX, LOGIN_WINDOW_MS);
+  if (!rl.ok) {
+    return { error: `Muitas tentativas. Aguarde ${Math.ceil(rl.retryAfterSec / 60)} min e tente de novo.` };
+  }
+
   const user = await db.user.findUnique({ where: { email } });
 
   // Mensagem genérica em todos os casos (não revela se o e-mail existe).
@@ -61,6 +76,8 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+  clearRateLimit(rlKey); // sucesso zera o contador
 
   await createSession({
     userId: user.id,
