@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { requireCan } from "@/server/auth/dal";
 import { InviteUserForm } from "./invite-user-form";
+import { DeleteUserButton } from "./delete-user-button";
 
 const STATUS_LABEL: Record<string, string> = {
   INVITED: "Convidado",
@@ -10,7 +11,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function AdminUsuariosPage() {
-  await requireCan("access_admin"); // defesa em profundidade (além do AdminLayout)
+  const session = await requireCan("access_admin"); // defesa em profundidade (além do AdminLayout)
   const [pharmacies, memberships] = await Promise.all([
     db.pharmacy.findMany({ orderBy: { tradeName: "asc" }, select: { id: true, tradeName: true } }),
     db.membership.findMany({
@@ -19,7 +20,7 @@ export default async function AdminUsuariosPage() {
         id: true,
         role: true,
         status: true,
-        user: { select: { name: true, email: true } },
+        user: { select: { id: true, name: true, email: true } },
         pharmacy: { select: { tradeName: true } },
       },
     }),
@@ -50,12 +51,13 @@ export default async function AdminUsuariosPage() {
               <th className="px-5 py-3.5">Farmácia</th>
               <th className="px-5 py-3.5">Papel</th>
               <th className="px-5 py-3.5">Status</th>
+              <th className="px-5 py-3.5 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
             {memberships.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-secondary">Nenhum vínculo ainda.</td>
+                <td colSpan={6} className="px-5 py-8 text-center text-secondary">Nenhum vínculo ainda.</td>
               </tr>
             ) : (
               memberships.map((m) => (
@@ -78,6 +80,13 @@ export default async function AdminUsuariosPage() {
                       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
                       {STATUS_LABEL[m.status] ?? m.status}
                     </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <DeleteUserButton
+                      userId={m.user.id}
+                      userName={m.user.name}
+                      isSelf={m.user.id === session.userId}
+                    />
                   </td>
                 </tr>
               ))

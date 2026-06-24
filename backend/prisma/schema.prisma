@@ -188,7 +188,7 @@ model Membership {
 
   pharmacy  Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
   user      User     @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
-  invitedBy User?    @relation("MembershipInvitedBy", fields: [invitedByUserId], references: [id])
+  invitedBy User?    @relation("MembershipInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([pharmacyId, userId])
   @@index([userId])
@@ -207,7 +207,7 @@ model UserInvitation {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user      User @relation("InvitationUser", fields: [userId], references: [id], onDelete: Cascade)
-  createdBy User @relation("InvitationCreatedBy", fields: [createdByUserId], references: [id])
+  createdBy User @relation("InvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_invitations")

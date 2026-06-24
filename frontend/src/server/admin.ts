@@ -153,3 +153,28 @@ export async function setPharmacyAdsClientAction(formData: FormData): Promise<Ad
   revalidatePath("/dashboard");
   return { ok: true };
 }
+
+/* Exclui um usuário (a PESSOA) globalmente: remove todos os vínculos/convites/sessões
+   por cascade. Só PLATFORM_ADMIN. Bloqueia auto-exclusão. Irreversível. */
+export async function deleteUserAction(formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("access_admin");
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Usuário inválido." };
+  if (userId === session.userId) return { error: "Você não pode excluir a própria conta." };
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true },
+  });
+  if (!user) return { error: "Usuário não encontrado." };
+
+  try {
+    await db.user.delete({ where: { id: userId } });
+  } catch {
+    return { error: "Falha ao excluir o usuário." };
+  }
+  // Ação de plataforma (sem pharmacyId único) — auditoria por tenant não se aplica.
+  console.warn(`[admin] usuário excluído: ${user.email} (por ${session.userId})`);
+  revalidatePath("/admin/usuarios");
+  return { ok: true };
+}
