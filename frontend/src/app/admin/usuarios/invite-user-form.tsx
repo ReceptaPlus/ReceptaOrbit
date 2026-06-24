@@ -1,9 +1,40 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { inviteUserAction, type AdminFormState } from "@/server/admin";
 
 const initialState: AdminFormState = {};
+
+function InviteLink({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard indisponível — usuário copia manualmente do campo */
+    }
+  }
+  return (
+    <div className="rounded-lg border border-line-subtle bg-cream-alt/50 p-3">
+      <p className="mb-1.5 text-small text-secondary">
+        Convite criado. Link de primeiro acesso (válido 7 dias) — envie ao cliente:
+      </p>
+      <div className="flex gap-2">
+        <input
+          readOnly
+          value={url}
+          onFocus={(e) => e.currentTarget.select()}
+          className="field-premium flex-1 text-small"
+        />
+        <button type="button" onClick={copy} className="btn-primary shrink-0 whitespace-nowrap">
+          {copied ? "Copiado ✓" : "Copiar"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function InviteUserForm({ pharmacies }: { pharmacies: { id: string; tradeName: string }[] }) {
   const [state, formAction, pending] = useActionState(inviteUserAction, initialState);
@@ -42,19 +73,7 @@ export function InviteUserForm({ pharmacies }: { pharmacies: { id: string; trade
         <p role="alert" className="text-small text-danger-text">{state.error}</p>
       ) : null}
 
-      {state.ok && state.inviteUrl ? (
-        <div className="rounded-lg border border-line-subtle bg-cream-alt/50 p-3">
-          <p className="mb-1.5 text-small text-secondary">
-            Convite criado. Link de primeiro acesso (válido 7 dias) — anexe ao domínio do app:
-          </p>
-          <input
-            readOnly
-            value={state.inviteUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="field-premium text-small"
-          />
-        </div>
-      ) : null}
+      {state.ok && state.inviteUrl ? <InviteLink url={state.inviteUrl} /> : null}
 
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "Convidando…" : "Convidar"}

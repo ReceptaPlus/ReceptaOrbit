@@ -2,6 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { requireCan } from "@/server/auth/dal";
@@ -119,7 +120,13 @@ export async function inviteUserAction(_prev: AdminFormState, formData: FormData
   });
 
   revalidatePath("/admin/usuarios");
-  return { ok: true, inviteUrl: `/convite/${token}` };
+
+  // URL absoluta a partir do host do request (funciona em prod e local).
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const base = host ? `${proto}://${host}` : "";
+  return { ok: true, inviteUrl: `${base}/convite/${token}` };
 }
 
 /* Vincula uma farmácia ao Client do Agente-Meta-Ads (resolve os cards de anúncio
