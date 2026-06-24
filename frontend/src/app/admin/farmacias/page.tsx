@@ -3,6 +3,7 @@ import { requireCan } from "@/server/auth/dal";
 import { listAgenteClients } from "@/server/agente/ads";
 import { CreatePharmacyForm } from "./create-pharmacy-form";
 import { AdsClientSelect } from "./ads-client-select";
+import { ChurnPharmacyButton } from "./churn-pharmacy-button";
 
 export default async function AdminFarmaciasPage() {
   await requireCan("access_admin"); // defesa em profundidade (além do AdminLayout)
@@ -32,12 +33,13 @@ export default async function AdminFarmaciasPage() {
               <th className="px-5 py-3.5">Plano</th>
               <th className="px-5 py-3.5">Status</th>
               <th className="px-5 py-3.5">Cliente de anúncios</th>
+              <th className="px-5 py-3.5 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
             {pharmacies.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-secondary">Nenhuma farmácia cadastrada.</td>
+                <td colSpan={6} className="px-5 py-8 text-center text-secondary">Nenhuma farmácia cadastrada.</td>
               </tr>
             ) : (
               pharmacies.map((p) => (
@@ -57,6 +59,9 @@ export default async function AdminFarmaciasPage() {
                   </td>
                   <td className="px-5 py-3.5">
                     <AdsClientSelect pharmacyId={p.id} current={p.agenteClientId} clients={adsClients} />
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <ChurnPharmacyButton pharmacyId={p.id} tradeName={p.tradeName} />
                   </td>
                 </tr>
               ))

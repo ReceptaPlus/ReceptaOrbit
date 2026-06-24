@@ -348,6 +348,55 @@ table, [data-numeric] {
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled { opacity: 0.6; pointer-events: none; }
 
+/* Botões compactos de ação (tabelas admin) — base neutra + variantes.
+   Mantêm tamanho/altura iguais p/ alinhar nas linhas. */
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-line);
+  background: #fff;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-secondary);
+  transition: border-color 0.15s var(--ease-out-soft), background-color 0.15s var(--ease-out-soft),
+    color 0.15s var(--ease-out-soft), box-shadow 0.15s var(--ease-out-soft);
+}
+.btn-sm:hover { border-color: var(--color-brand-400); color: var(--color-brand-600); box-shadow: 0 2px 8px rgba(10, 13, 12, 0.06); }
+.btn-sm:disabled { opacity: 0.45; pointer-events: none; }
+
+/* Variante perigo leve (excluir usuário). */
+.btn-sm-danger { color: var(--color-danger-text); }
+.btn-sm-danger:hover { border-color: var(--color-danger-text); background: var(--color-danger-bg); color: var(--color-danger-text); box-shadow: none; }
+
+/* Churn — destrutivo forte (excluir farmácia/tenant inteiro). */
+.btn-churn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 1.875rem;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-danger-text);
+  background: var(--color-danger-bg);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-danger-text);
+  transition: transform 0.15s var(--ease-out-soft), background-color 0.15s var(--ease-out-soft),
+    color 0.15s var(--ease-out-soft), box-shadow 0.15s var(--ease-out-soft);
+}
+.btn-churn:hover { background: var(--color-danger-text); color: #fff; box-shadow: 0 4px 14px rgba(179, 38, 30, 0.3); transform: translateY(-1px); }
+.btn-churn:active { transform: translateY(0); }
+.btn-churn:disabled { opacity: 0.5; pointer-events: none; }
+
 /* Skeleton shimmer */
 @keyframes shimmer { 100% { background-position: -200% 0; } }
 .skeleton {

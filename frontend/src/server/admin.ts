@@ -175,6 +175,32 @@ export async function setPharmacyAdsClientAction(formData: FormData): Promise<Ad
   return { ok: true };
 }
 
+/* "Churn": exclui a farmácia (o tenant) e TODO o dado dela por cascade — memberships,
+   contatos, conversas, mensagens, auditoria e conexão WhatsApp. Irreversível.
+   Só PLATFORM_ADMIN (mesma permissão de criar). Os usuários (as pessoas) permanecem;
+   apenas perdem o vínculo com esta farmácia. */
+export async function churnPharmacyAction(formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("create_pharmacy");
+  const pharmacyId = String(formData.get("pharmacyId") ?? "");
+  if (!pharmacyId) return { error: "Farmácia inválida." };
+
+  const pharmacy = await db.pharmacy.findUnique({
+    where: { id: pharmacyId },
+    select: { id: true, tradeName: true },
+  });
+  if (!pharmacy) return { error: "Farmácia não encontrada." };
+
+  try {
+    await db.pharmacy.delete({ where: { id: pharmacyId } });
+  } catch {
+    return { error: "Falha ao excluir a farmácia." };
+  }
+  // Tenant removido — auditoria por tenant não se aplica (a trilha foi junto no cascade).
+  console.warn(`[admin] farmácia (churn): id=${pharmacy.id} "${pharmacy.tradeName}" (por ${session.userId})`);
+  revalidatePath("/admin/farmacias");
+  return { ok: true };
+}
+
 /* Exclui um usuário (a PESSOA) globalmente: remove todos os vínculos/convites/sessões
    por cascade. Só PLATFORM_ADMIN. Bloqueia auto-exclusão. Irreversível. */
 export async function deleteUserAction(formData: FormData): Promise<AdminFormState> {

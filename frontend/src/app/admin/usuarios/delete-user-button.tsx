@@ -39,7 +39,7 @@ export function DeleteUserButton({
         onClick={onClick}
         disabled={pending || isSelf}
         title={isSelf ? "Você não pode excluir a própria conta" : "Excluir usuário"}
-        className="rounded-md border border-line px-2.5 py-1 text-micro font-medium text-danger-text transition-colors hover:border-danger-text/50 hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-40"
+        className="btn-sm btn-sm-danger"
       >
         {pending ? "Excluindo…" : "Excluir"}
       </button>

@@ -45,7 +45,7 @@ export function ResetPasswordButton({ userId, userName }: { userId: string; user
         type="button"
         onClick={onClick}
         disabled={pending}
-        className="rounded-md border border-line px-2.5 py-1 text-micro font-medium text-secondary transition-colors hover:border-brand-400 hover:text-brand-500 disabled:opacity-40"
+        className="btn-sm"
       >
         {pending ? "Redefinindo…" : "Redefinir senha"}
       </button>
