@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { requireCan } from "@/server/auth/dal";
 import { InviteUserForm } from "./invite-user-form";
 import { DeleteUserButton } from "./delete-user-button";
+import { ResetPasswordButton } from "./reset-password-button";
 
 const STATUS_LABEL: Record<string, string> = {
   INVITED: "Convidado",
@@ -82,11 +83,14 @@ export default async function AdminUsuariosPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <DeleteUserButton
-                      userId={m.user.id}
-                      userName={m.user.name}
-                      isSelf={m.user.id === session.userId}
-                    />
+                    <div className="flex flex-col items-end gap-1.5">
+                      <ResetPasswordButton userId={m.user.id} userName={m.user.name} />
+                      <DeleteUserButton
+                        userId={m.user.id}
+                        userName={m.user.name}
+                        isSelf={m.user.id === session.userId}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))

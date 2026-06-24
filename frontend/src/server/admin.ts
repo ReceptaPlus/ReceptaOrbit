@@ -7,7 +7,20 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { requireCan } from "@/server/auth/dal";
 import { generateInviteToken } from "@/server/auth/tokens";
+import { hashPassword } from "@/server/auth/password";
 import { writeAudit } from "@/server/audit";
+
+/* Senha temporária legível (10 chars, com letra E dígito; sem 0/O/1/l ambíguos). */
+function generateTempPassword(): string {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = letters + digits;
+  const b = randomBytes(10);
+  const pick = (set: string, n: number) => set[n % set.length];
+  let out = pick(letters, b[0]) + pick(digits, b[1]);
+  for (let i = 2; i < 10; i++) out += pick(all, b[i]);
+  return out;
+}
 
 /* Ações de plataforma (staff). Gated por requireCan: só PLATFORM_ADMIN cria farmácia;
    manage_users vincula/convida. Toda criação gera auditoria. */
@@ -16,6 +29,7 @@ export interface AdminFormState {
   error?: string;
   ok?: boolean;
   inviteUrl?: string;
+  tempPassword?: string;
 }
 
 function slugify(value: string): string {
@@ -184,4 +198,30 @@ export async function deleteUserAction(formData: FormData): Promise<AdminFormSta
   console.warn(`[admin] usuário excluído: ${user.email} (por ${session.userId})`);
   revalidatePath("/admin/usuarios");
   return { ok: true };
+}
+
+/* Redefine a senha de um usuário para uma temporária (admin entrega ao cliente).
+   Bump em sessionVersion invalida sessões antigas. Só PLATFORM_ADMIN.
+   Retorna a senha em texto UMA vez (não é recuperável depois — só hash no banco). */
+export async function resetUserPasswordAction(formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("access_admin");
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Usuário inválido." };
+
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+  if (!user) return { error: "Usuário não encontrado." };
+
+  const tempPassword = generateTempPassword();
+  try {
+    const passwordHash = await hashPassword(tempPassword);
+    await db.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: true, sessionVersion: { increment: 1 } },
+    });
+  } catch {
+    return { error: "Falha ao redefinir a senha." };
+  }
+  console.warn(`[admin] senha redefinida: ${user.email} (por ${session.userId})`);
+  revalidatePath("/admin/usuarios");
+  return { ok: true, tempPassword };
 }
