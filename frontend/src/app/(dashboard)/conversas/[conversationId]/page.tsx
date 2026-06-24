@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getConversationVM } from "@/modules/conversations/queries";
+import { MarkConversationRead } from "@/components/mark-conversation-read";
 import { StatusBadge } from "@/components/badges";
 import { WaitingBadge } from "@/components/waiting-badge";
 
@@ -36,6 +37,7 @@ export default async function ConversaDetalhePage({
 
   return (
     <div className="space-y-6">
+      <MarkConversationRead cycleId={cycle.id} />
       <header className="animate-fade-in">
         <Link href="/conversas" className="text-small text-secondary transition-colors hover:text-brand-500">
           ← Conversas

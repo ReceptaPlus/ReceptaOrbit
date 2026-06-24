@@ -5,6 +5,7 @@ import { CommandPalette } from "@/components/layout/command-palette";
 import { requireSession } from "@/server/auth/dal";
 import { db } from "@/server/db";
 import { can } from "@/modules/tenancy/authz";
+import { countUnreadConversations } from "@/modules/conversations/queries";
 import { initials } from "@/lib/format";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,11 +16,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // (sem pharmacyId) não pertence ao app do tenant → vai para a área /admin.
   if (!session.pharmacyId) redirect("/admin");
 
-  const [user, pharmacy] = await Promise.all([
+  const [user, pharmacy, unreadConversations] = await Promise.all([
     db.user.findUnique({ where: { id: session.userId }, select: { name: true, email: true } }),
     session.pharmacyId
       ? db.pharmacy.findUnique({ where: { id: session.pharmacyId }, select: { tradeName: true } })
       : Promise.resolve(null),
+    countUnreadConversations(),
   ]);
 
   const ROLE_LABELS: Record<string, string> = {
@@ -37,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     initials: initials(user?.name ?? pharmacy?.tradeName ?? "?"),
     canAdmin: can("access_admin", session.role),
     roleLabel: ROLE_LABELS[session.role] ?? session.role,
+    unreadConversations,
   };
 
   return (

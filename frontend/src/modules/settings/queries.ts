@@ -53,33 +53,3 @@ export async function getPharmacyVM(): Promise<PharmacyVM> {
   });
 }
 
-export interface IntegrationVM {
-  id: string;
-  name: string;
-  detail: string;
-  connected: boolean;
-  comingSoon: boolean;
-}
-
-/** Integrações: WhatsApp/Evolution é real (WhatsAppConnection). Meta/Google ainda
-   não têm modelo — exibidas como "em breve" (nunca como falso-conectado). */
-export async function listIntegrationsVM(): Promise<IntegrationVM[]> {
-  const { pharmacyId } = await getAuthorizedPharmacyContext();
-  const wa = await db.whatsAppConnection.findUnique({ where: { pharmacyId } });
-
-  const waDetail = !wa
-    ? "Nenhuma instância configurada"
-    : wa.state === "CONNECTED"
-      ? `Instância ${wa.instanceName ?? "—"} · ${wa.pairedNumber ?? "número não pareado"}`
-      : wa.state === "PAIRING"
-        ? "Pareamento em andamento — leia o QR Code"
-        : wa.state === "DOWN"
-          ? "Conexão caiu — refaça o pareamento"
-          : "Desconectado";
-
-  return [
-    { id: "evolution", name: "WhatsApp (Evolution API)", detail: waDetail, connected: wa?.state === "CONNECTED", comingSoon: false },
-    { id: "meta", name: "Meta Ads", detail: "Atribuição de campanhas — em breve", connected: false, comingSoon: true },
-    { id: "google", name: "Google Ads", detail: "Atribuição via GCLID — em breve", connected: false, comingSoon: true },
-  ];
-}

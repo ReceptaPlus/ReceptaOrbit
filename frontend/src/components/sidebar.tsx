@@ -15,7 +15,7 @@ import { logoutAction } from "@/server/auth/login";
 
 const WORKSPACE = [
   { href: "/dashboard", label: "Dashboard", exact: true, icon: IconDashboard },
-  { href: "/conversas", label: "Conversas", icon: IconChat, badge: 12 },
+  { href: "/conversas", label: "Conversas", icon: IconChat },
   { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
 ] as const;
@@ -31,10 +31,12 @@ export interface SidebarUser {
   initials: string;
   canAdmin: boolean;
   roleLabel?: string;
+  unreadConversations?: number;
 }
 
 export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
+  const unread = user.unreadConversations && user.unreadConversations > 0 ? user.unreadConversations : undefined;
 
   function NavItem({
     href,
@@ -129,7 +131,6 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             <path d="m20 20-3.5-3.5" strokeLinecap="round" />
           </svg>
           <span className="flex-1 text-left">Buscar...</span>
-          <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
         </button>
       </div>
 
@@ -140,7 +141,11 @@ export function Sidebar({ user }: { user: SidebarUser }) {
         </p>
         <div className="space-y-1">
           {WORKSPACE.map((item) => (
-            <NavItem key={item.href} {...item} />
+            <NavItem
+              key={item.href}
+              {...item}
+              badge={item.href === "/conversas" ? unread : undefined}
+            />
           ))}
         </div>
 

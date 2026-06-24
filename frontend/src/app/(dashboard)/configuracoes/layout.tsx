@@ -8,7 +8,6 @@ const TABS = [
   { href: "/configuracoes/farmacia", label: "Farmácia", icon: "M3 21h18M5 21V7l7-4 7 4v14M9 9h2m-2 4h2m4-4h2m-2 4h2" },
   { href: "/configuracoes/usuarios", label: "Usuários", icon: "M16 19a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" },
   { href: "/configuracoes/whatsapp", label: "WhatsApp", icon: "M4 20l1.5-4A8 8 0 1 1 9 19.5L4 20Z" },
-  { href: "/configuracoes/integracoes", label: "Integrações", icon: "M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1m1 8a5 5 0 0 1-7 0 5 5 0 0 1 0-7l2-2" },
 ];
 
 export default function ConfiguracoesLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +17,7 @@ export default function ConfiguracoesLayout({ children }: { children: React.Reac
     <div className="space-y-6">
       <header className="animate-fade-in">
         <h1 className="font-display text-display-lg font-bold tracking-tight text-ink">Configurações</h1>
-        <p className="mt-1 text-body text-secondary">Dados da farmácia, equipe, integrações e segurança.</p>
+        <p className="mt-1 text-body text-secondary">Dados da farmácia, equipe e conexão do WhatsApp.</p>
       </header>
 
       <nav

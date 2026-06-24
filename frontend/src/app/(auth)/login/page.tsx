@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { LoginForm } from "./login-form";
 
 /* Login premium — hero da marca (degradê + grid curvado) à esquerda, formulário
@@ -57,12 +56,9 @@ export default function LoginPage() {
 
           <LoginForm />
 
-          <Link
-            href="/recuperar-senha"
-            className="mt-6 block text-center text-small text-neutral-600 transition-colors hover:text-brand-500"
-          >
-            Esqueci minha senha
-          </Link>
+          <p className="mt-6 text-center text-small text-neutral-600">
+            Esqueceu a senha? Fale com a equipe Recepta.
+          </p>
         </div>
       </section>
     </main>

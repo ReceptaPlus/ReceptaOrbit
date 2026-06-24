@@ -157,6 +157,7 @@ model User {
   invitations        UserInvitation[]      @relation("InvitationUser")
   createdInvitations UserInvitation[]      @relation("InvitationCreatedBy")
   legalAcceptances   UserLegalAcceptance[]
+  conversationReads  ConversationRead[]
 
   @@map("users")
 }
@@ -333,6 +334,7 @@ model ConversationCycle {
 
   contact  Contact   @relation(fields: [contactId, pharmacyId], references: [id, pharmacyId], onDelete: Cascade)
   messages Message[]
+  reads    ConversationRead[]
   // NOTA migration (SQL manual — Prisma não suporta índice filtrado):
   //  · UNIQUE parcial (pharmacy_id, contact_id) WHERE status='OPEN' → invariante "1 ciclo OPEN"
   //  · índice parcial (pharmacy_id, contact_id) WHERE status='OPEN' → caminho quente do worker
@@ -341,6 +343,21 @@ model ConversationCycle {
   @@index([pharmacyId, contactId])
   @@index([pharmacyId, lastMessageAt])
   @@map("conversation_cycles")
+}
+
+// Marca quais ciclos cada usuário JÁ ABRIU — alimenta o badge "não vistas" no menu.
+// Ausência de linha = nunca aberto (conta no badge); presença = visto (sai do badge).
+model ConversationRead {
+  userId  String   @map("user_id") @db.Uuid
+  cycleId String   @map("cycle_id") @db.Uuid
+  seenAt  DateTime @default(now()) @map("seen_at") @db.Timestamptz
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycle ConversationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cycleId])
+  @@index([cycleId])
+  @@map("conversation_reads")
 }
 
 // Mensagem individual — espelho IMUTÁVEL do WhatsApp; fonte de verdade da auditoria.

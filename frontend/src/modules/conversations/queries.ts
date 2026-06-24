@@ -120,3 +120,11 @@ export async function getConversationVM(cycleId: string): Promise<CycleDetailVM 
   const { pharmacyId, role } = await getAuthorizedPharmacyContext();
   return fetchCycleDetail(pharmacyId, role, cycleId);
 }
+
+/** Nº de conversas que o usuário atual NUNCA abriu (badge "não vistas" no menu). */
+export async function countUnreadConversations(): Promise<number> {
+  const { pharmacyId, userId } = await getAuthorizedPharmacyContext();
+  return db.conversationCycle.count({
+    where: { pharmacyId, reads: { none: { userId } } },
+  });
+}
