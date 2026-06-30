@@ -8,6 +8,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   DIRECT_DATABASE_URL: z.string().min(1).optional(),
   PASSWORD_PEPPER: z.string().min(1, "PASSWORD_PEPPER é obrigatório"),
+  PASSWORD_PEPPER_OLD: z.string().optional(), // pepper anterior, aceito só na verificação (rotação sem lockout)
 });
 
 export const env = schema.parse(process.env);

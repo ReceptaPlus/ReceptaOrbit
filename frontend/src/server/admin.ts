@@ -30,6 +30,8 @@ export interface AdminFormState {
   ok?: boolean;
   inviteUrl?: string;
   tempPassword?: string;
+  webhookUrl?: string;
+  webhookSecret?: string;
 }
 
 function slugify(value: string): string {
@@ -172,6 +174,100 @@ export async function setPharmacyAdsClientAction(formData: FormData): Promise<Ad
   }
   revalidatePath("/admin/farmacias");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/* Conecta uma farmácia a um canal Digisac (provider multicanal). Gera um segredo de
+   webhook (mostrado UMA vez p/ colar no painel Digisac) e guarda só o hash. A farmácia
+   passa a ingerir por aqui em vez da Evolution. Só staff (access_admin). */
+const digisacSchema = z.object({
+  pharmacyId: z.string().min(1, "Selecione a farmácia"),
+  externalId: z.string().min(1, "Informe o ID do canal (serviceId) da Digisac"),
+  label: z.string().optional(),
+  apiBaseUrl: z.string().url("URL da API inválida").optional().or(z.literal("")),
+});
+
+export async function connectDigisacAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("access_admin");
+  const parsed = digisacSchema.safeParse({
+    pharmacyId: formData.get("pharmacyId"),
+    externalId: formData.get("externalId"),
+    label: formData.get("label") || undefined,
+    apiBaseUrl: formData.get("apiBaseUrl") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+
+  const externalId = parsed.data.externalId.trim();
+
+  // serviceId é único globalmente (resolve exatamente um tenant no webhook).
+  const existing = await db.channelConnection.findUnique({
+    where: { provider_externalId: { provider: "DIGISAC", externalId } },
+    select: { id: true },
+  });
+  if (existing) return { error: "Este canal (serviceId) já está vinculado a uma farmácia." };
+
+  const { token: secret, tokenHash } = generateInviteToken(); // reusa gerador + SHA-256
+
+  try {
+    await db.channelConnection.create({
+      data: {
+        pharmacyId: parsed.data.pharmacyId,
+        provider: "DIGISAC",
+        externalId,
+        label: parsed.data.label?.trim() || null,
+        apiBaseUrl: parsed.data.apiBaseUrl?.trim() || null,
+        webhookSecretHash: tokenHash,
+      },
+    });
+    await writeAudit({
+      pharmacyId: parsed.data.pharmacyId,
+      actorUserId: session.userId,
+      onBehalfOf: parsed.data.pharmacyId,
+      action: "PHARMACY_UPDATED",
+      entityType: "Pharmacy",
+      entityId: parsed.data.pharmacyId,
+      after: { channel: "DIGISAC", externalId },
+    });
+  } catch {
+    return { error: "Falha ao conectar o canal Digisac." };
+  }
+
+  revalidatePath("/admin/farmacias");
+
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const base = host ? `${proto}://${host}` : "";
+  return { ok: true, webhookUrl: `${base}/api/webhooks/digisac`, webhookSecret: secret };
+}
+
+/* Desconecta um canal (remove a conexão). Não apaga dados já ingeridos. */
+export async function disconnectChannelAction(formData: FormData): Promise<AdminFormState> {
+  const session = await requireCan("access_admin");
+  const id = String(formData.get("connectionId") ?? "");
+  if (!id) return { error: "Conexão inválida." };
+
+  const conn = await db.channelConnection.findUnique({
+    where: { id },
+    select: { id: true, pharmacyId: true, externalId: true },
+  });
+  if (!conn) return { error: "Conexão não encontrada." };
+
+  try {
+    await db.channelConnection.delete({ where: { id } });
+    await writeAudit({
+      pharmacyId: conn.pharmacyId,
+      actorUserId: session.userId,
+      onBehalfOf: conn.pharmacyId,
+      action: "PHARMACY_UPDATED",
+      entityType: "Pharmacy",
+      entityId: conn.pharmacyId,
+      after: { channel: "DIGISAC", externalId: conn.externalId, removed: true },
+    });
+  } catch {
+    return { error: "Falha ao desconectar o canal." };
+  }
+  revalidatePath("/admin/farmacias");
   return { ok: true };
 }
 

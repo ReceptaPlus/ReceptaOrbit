@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getConversationVM } from "@/modules/conversations/queries";
 import { MarkConversationRead } from "@/components/mark-conversation-read";
-import { StatusBadge } from "@/components/badges";
+import { StatusBadge, ConfidencePill } from "@/components/badges";
 import { WaitingBadge } from "@/components/waiting-badge";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -100,6 +100,38 @@ export default async function ConversaDetalhePage({
 
         {/* Painel lateral */}
         <div className="space-y-4">
+          {/* Análise da conversa (IA via n8n): venda + resumo */}
+          {cycle.analysis ? (
+            <section className="card-premium p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display text-subtitle font-semibold text-ink">Análise da conversa</h2>
+                {cycle.analysis.isSale ? (
+                  <span className="inline-flex items-center rounded-full bg-success-bg px-2.5 py-0.5 text-xs font-medium text-success-text">
+                    Venda identificada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-line-subtle px-2.5 py-0.5 text-xs font-medium text-secondary">
+                    Sem venda
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3">
+                {cycle.analysis.isSale && cycle.analysis.valueDisplay ? (
+                  <Row label="Valor"><span className="text-small font-semibold text-ink" data-numeric>{cycle.analysis.valueDisplay}</span></Row>
+                ) : null}
+                {cycle.analysis.stage ? <Row label="Estágio"><span className="text-small text-secondary">{cycle.analysis.stage}</span></Row> : null}
+                {!cycle.analysis.isSale && cycle.analysis.lossReason ? (
+                  <Row label="Motivo"><span className="text-small text-secondary">{cycle.analysis.lossReason}</span></Row>
+                ) : null}
+                <Row label="Confiança"><ConfidencePill value={cycle.analysis.confidence} /></Row>
+                <div>
+                  <span className="text-small text-secondary">Resumo</span>
+                  <p className="mt-1 text-small leading-relaxed text-ink">{cycle.analysis.summary}</p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           {/* Resumo da IA / Origem */}
           <section className="card-premium p-5">
             <div className="mb-3 flex items-center gap-2">

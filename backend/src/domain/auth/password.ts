@@ -14,6 +14,10 @@ export function hashPassword(plain: string): Promise<string> {
   return hash(env.PASSWORD_PEPPER + plain, OPTIONS);
 }
 
-export function verifyPassword(passwordHash: string, plain: string): Promise<boolean> {
-  return verify(passwordHash, env.PASSWORD_PEPPER + plain, OPTIONS);
+/* Verifica com o pepper primário; se falhar, tenta o anterior (PASSWORD_PEPPER_OLD) —
+   permite rotacionar o pepper sem invalidar os hashes existentes. */
+export async function verifyPassword(passwordHash: string, plain: string): Promise<boolean> {
+  if (await verify(passwordHash, env.PASSWORD_PEPPER + plain, OPTIONS)) return true;
+  if (env.PASSWORD_PEPPER_OLD && (await verify(passwordHash, env.PASSWORD_PEPPER_OLD + plain, OPTIONS))) return true;
+  return false;
 }

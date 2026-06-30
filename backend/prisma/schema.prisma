@@ -1,7 +1,8 @@
 // Recepta Orbit — Schema Prisma
 // FASE 1 (fundação): identidade, multi-tenancy, RBAC, primeiro acesso, termos/privacidade, auditoria.
 // V1 INGESTÃO ("espionagem" WhatsApp): WhatsAppConnection, Contact, ConversationCycle, Message, WebhookEvent.
-// Fora de escopo (entra com a IA, fase futura): AIAnalysis, Sale, SaleItem, TrackingLink.
+// IA (análise externa via n8n; app só exibe): CycleAnalysis (venda por ciclo) + SalesReport (relatório do dono).
+// Fora de escopo (fase futura): Sale, SaleItem, TrackingLink.
 // Autoridade: docs/DOMAIN-MODEL.md + docs/CONTRATOS-FRONTEND.md (congelados) +
 // frontend/src/types/domain.ts. Convenção: model PascalCase, coluna/tabela snake_case via @map/@@map.
 // Multi-tenant: pharmacy_id NOT NULL no domínio; FK compostas (id, pharmacy_id) impedem mistura de tenants.
@@ -107,8 +108,17 @@ enum MessageDirection {
 
 enum WebhookEventStatus {
   PENDING
+  PROCESSING // reivindicado por um worker (claim atômico FOR UPDATE SKIP LOCKED)
   PROCESSED
-  FAILED
+  FAILED // dead-letter: erro permanente ou esgotou as tentativas
+}
+
+// Provider de canal por farmácia. EVOLUTION = WhatsApp via QR (instância própria).
+// DIGISAC = plataforma de atendimento multicanal (WhatsApp/Instagram/Telegram/...).
+// Aditivo: a farmácia usa Evolution OU um provider multicanal (escolha por-tenant).
+enum ChannelProvider {
+  EVOLUTION
+  DIGISAC
 }
 
 // ── Tenancy ────────────────────────────────────────────────────────────────
@@ -131,7 +141,9 @@ model Pharmacy {
   memberships        Membership[]
   auditLogs          AuditLog[]
   whatsAppConnection WhatsAppConnection?
+  channelConnections ChannelConnection[]
   contacts           Contact[]
+  salesReports       SalesReport[]
 
   @@map("pharmacies")
 }
@@ -335,6 +347,7 @@ model ConversationCycle {
   contact  Contact   @relation(fields: [contactId, pharmacyId], references: [id, pharmacyId], onDelete: Cascade)
   messages Message[]
   reads    ConversationRead[]
+  analysis CycleAnalysis? // resultado da IA (1:1; populado pelo n8n via endpoint interno)
   // NOTA migration (SQL manual — Prisma não suporta índice filtrado):
   //  · UNIQUE parcial (pharmacy_id, contact_id) WHERE status='OPEN' → invariante "1 ciclo OPEN"
   //  · índice parcial (pharmacy_id, contact_id) WHERE status='OPEN' → caminho quente do worker
@@ -385,14 +398,95 @@ model Message {
 model WebhookEvent {
   id           String             @id @default(uuid()) @db.Uuid
   pharmacyId   String?            @map("pharmacy_id") @db.Uuid
-  instanceName String?            @map("instance_name")
+  provider     ChannelProvider    @default(EVOLUTION)
+  instanceName String?            @map("instance_name") // Evolution: nome da instância
+  externalId   String?            @map("external_id") // Digisac: serviceId do canal → resolve tenant
   eventType    String?            @map("event_type")
   payload      Json
   status       WebhookEventStatus @default(PENDING)
+  attempts     Int                @default(0) // nº de tentativas já feitas (retry com backoff)
+  nextRetryAt  DateTime?          @map("next_retry_at") @db.Timestamptz // PENDING só é reivindicado quando <= now; em PROCESSING vira o deadline de visibilidade (reaper de crash)
   error        String?
   receivedAt   DateTime           @default(now()) @map("received_at") @db.Timestamptz
   processedAt  DateTime?          @map("processed_at") @db.Timestamptz
 
   @@index([status, receivedAt])
   @@map("webhook_events")
+}
+
+// Conexão a um provider de canal multicanal (hoje: Digisac). Coexiste com
+// WhatsAppConnection (Evolution) sem migrar o que já funciona. Uma farmácia pode
+// ter várias (ex.: vários "services" Digisac). Ingestão V1 só precisa de:
+//   · externalId  → resolve o tenant a partir do webhook (serviceId)
+//   · webhookSecretHash → autentica o webhook (segredo nunca em claro: só SHA-256)
+// apiBaseUrl/token (outbound) ficam para quando houver envio pelo app.
+model ChannelConnection {
+  id                String          @id @default(uuid()) @db.Uuid
+  pharmacyId        String          @map("pharmacy_id") @db.Uuid
+  provider          ChannelProvider
+  externalId        String          @map("external_id") // serviceId/accountId no payload do webhook
+  label             String? // nome amigável do canal (ex.: "WhatsApp Loja Centro")
+  apiBaseUrl        String?         @map("api_base_url") // ex.: https://{conta}.digisac.me/api/v1 (outbound futuro)
+  webhookSecretHash String          @map("webhook_secret_hash") // SHA-256 do segredo do webhook
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId]) // (DIGISAC, serviceId) → uma conexão → um tenant
+  @@index([pharmacyId])
+  @@map("channel_connections")
+}
+
+// ── IA — Análise de conversas (produzida FORA do app, pelo n8n) ───────────────
+
+// Resultado da IA por ciclo (1:1). O app NÃO roda LLM: o n8n lê o ciclo via endpoint
+// interno, classifica e devolve aqui. Idempotente: analyzedThroughMessageAt registra
+// até qual ponto a conversa já foi analisada — só reprocessa se chegou msg nova.
+model CycleAnalysis {
+  id                       String   @id @default(uuid()) @db.Uuid
+  pharmacyId               String   @map("pharmacy_id") @db.Uuid
+  cycleId                  String   @map("cycle_id") @db.Uuid
+  isSale                   Boolean  @map("is_sale") // a conversa virou venda?
+  saleValueCents           Int?     @map("sale_value_cents") // valor estimado da venda (centavos)
+  stage                    String? // estágio do funil (texto livre da IA)
+  lossReason               String?  @map("loss_reason") // motivo de perda quando isSale=false
+  summary                  String // resumo curto da conversa (pt-BR)
+  confidence               Float // 0..1 — confiança da classificação
+  model                    String // modelo usado (ex.: claude-...)
+  analyzedAt               DateTime @default(now()) @map("analyzed_at") @db.Timestamptz
+  analyzedThroughMessageAt DateTime @map("analyzed_through_message_at") @db.Timestamptz // gate de re-análise
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  cycle ConversationCycle @relation(fields: [cycleId, pharmacyId], references: [id, pharmacyId], onDelete: Cascade)
+
+  @@unique([cycleId, pharmacyId]) // 1:1 com o ciclo + idempotência do upsert
+  @@index([pharmacyId, isSale])
+  @@index([pharmacyId, analyzedAt])
+  @@map("cycle_analyses")
+}
+
+// Relatório agregado por farmácia/período — narrativa curta pro dono (vendas × volume
+// de conversas). Snapshot das métricas no momento da geração (não recalcula histórico).
+// Também produzido pelo n8n via endpoint interno.
+model SalesReport {
+  id                String   @id @default(uuid()) @db.Uuid
+  pharmacyId        String   @map("pharmacy_id") @db.Uuid
+  periodStart       DateTime @map("period_start") @db.Timestamptz
+  periodEnd         DateTime @map("period_end") @db.Timestamptz
+  narrative         String // resumo curto pro dono (pt-BR)
+  salesCount        Int      @map("sales_count")
+  salesValueCents   Int      @map("sales_value_cents")
+  conversationCount Int      @map("conversation_count")
+  conversionRate    Float    @map("conversion_rate") // salesCount / conversationCount
+  model             String
+  generatedAt       DateTime @default(now()) @map("generated_at") @db.Timestamptz
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@index([pharmacyId, periodEnd])
+  @@map("sales_reports")
 }

@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { loginSchema } from "@/modules/auth/schemas";
 import type { SessionRole } from "@/types/domain";
 import { db } from "@/server/db";
-import { verifyPassword } from "./password";
+import { verifyPassword, hashPassword } from "./password";
 import { createSession, destroySession } from "./session";
 import { hitRateLimit, clearRateLimit } from "@/lib/rate-limit";
 
@@ -50,10 +50,12 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     return { error: "Conta suspensa. Fale com o suporte." };
   }
 
-  const ok = await verifyPassword(user.passwordHash, parsed.data.password);
+  const { ok, needsRehash } = await verifyPassword(user.passwordHash, parsed.data.password);
   if (!ok) {
     return { error: "Usuário ou senha incorretos." };
   }
+  // Migração de pepper sem lockout: hash antigo confere via fallback → regrava com o primário.
+  const rehash = needsRehash ? { passwordHash: await hashPassword(parsed.data.password) } : {};
 
   // Resolve contexto: 1º membership ativo; senão papel de plataforma (staff).
   const membership = await db.membership.findFirst({
@@ -75,7 +77,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     pharmacyId = null;
   }
 
-  await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), ...rehash } });
 
   clearRateLimit(rlKey); // sucesso zera o contador
 

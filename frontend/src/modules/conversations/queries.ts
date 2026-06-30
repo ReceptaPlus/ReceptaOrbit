@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { getAuthorizedPharmacyContext } from "@/server/auth/dal";
-import { formatPhone, maskPhone, formatTime } from "@/lib/format";
+import { formatPhone, maskPhone, formatTime, formatBRL } from "@/lib/format";
 import type { TenantRole } from "@/types/domain";
 
 /* Camada de dados V1 (sem IA) — Conversas. Lê do Prisma, escopo de tenant garantido
@@ -30,6 +30,16 @@ export interface CycleAttributionVM {
   campaignName?: string;
 }
 
+// Análise da IA (produzida fora, pelo n8n). Null = ainda não analisado.
+export interface CycleAnalysisVM {
+  isSale: boolean;
+  valueDisplay: string | null; // "R$ 120,00" ou null se a IA não estimou
+  stage: string | null;
+  lossReason: string | null;
+  summary: string;
+  confidence: number; // 0..1
+}
+
 export interface CycleDetailVM {
   id: string;
   contactId: string;
@@ -38,6 +48,7 @@ export interface CycleDetailVM {
   status: "OPEN" | "CLOSED";
   waiting: Waiting;
   attribution: CycleAttributionVM | null;
+  analysis: CycleAnalysisVM | null;
   messages: { id: string; direction: "INBOUND" | "OUTBOUND"; text: string; time: string }[];
 }
 
@@ -87,11 +98,13 @@ export async function fetchCycleDetail(
     include: {
       contact: { select: { id: true, name: true, phoneE164: true } },
       messages: { orderBy: { sentAt: "asc" }, select: { id: true, direction: true, textContent: true, sentAt: true } },
+      analysis: true,
     },
   });
   if (!cycle) return null;
 
   const last = cycle.messages[cycle.messages.length - 1];
+  const a = cycle.analysis;
   return {
     id: cycle.id,
     contactId: cycle.contactId,
@@ -100,6 +113,16 @@ export async function fetchCycleDetail(
     status: cycle.status === "OPEN" ? "OPEN" : "CLOSED",
     waiting: deriveWaiting(cycle.status, last?.direction),
     attribution: (cycle.attribution as CycleAttributionVM | null) ?? null,
+    analysis: a
+      ? {
+          isSale: a.isSale,
+          valueDisplay: a.saleValueCents != null ? formatBRL(a.saleValueCents) : null,
+          stage: a.stage,
+          lossReason: a.lossReason,
+          summary: a.summary,
+          confidence: a.confidence,
+        }
+      : null,
     messages: cycle.messages.map((m) => ({
       id: m.id,
       direction: m.direction,
