@@ -102,7 +102,7 @@ faz `upsert` por `(cycleId, pharmacyId)`, então re-rodar o workflow não duplic
 
 ## Ajustes comuns
 
-- **Modelo**: editar `MODEL` nos nós *Code* (default `claude-sonnet-4-6`; `claude-haiku-4-5`
+- **Modelo**: editar `MODEL` nos nós *Code* (default `claude-sonnet-5`; `claude-haiku-4-5-20251001`
   é mais barato para classificação em escala).
 - **Cadência**: editar o nó *Schedule Trigger*.
 - **Lote**: `?limit=` no `GET ciclos pendentes` controla quantos ciclos por execução.
