@@ -62,7 +62,7 @@ export async function getAuthorizedPharmacyContext(): Promise<PharmacyContext> {
   return { userId: session.userId, pharmacyId: session.pharmacyId, role: membership.role };
 }
 
-/** Autorização server-side por ação. */
+/** Autorização server-side por ação. RBAC sempre aplicado (inclusive no demo). */
 export async function requireCan(action: Action): Promise<SessionPayload> {
   const session = await requireSession();
   if (!can(action, session.role)) redirect("/dashboard");

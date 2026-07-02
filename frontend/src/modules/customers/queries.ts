@@ -74,6 +74,28 @@ export async function fetchContactDetail(
   };
 }
 
+export interface CustomersKpis {
+  total: number;
+  novosMes: number;
+  novos7d: number;
+  comConversa: number;
+}
+
+/* KPIs de volume (V1 sem vendas): nada de ticket/LTV — só contagens reais de contatos. */
+export async function getCustomersKpis(): Promise<CustomersKpis> {
+  const { pharmacyId } = await getAuthorizedPharmacyContext();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const [total, novosMes, novos7d, comConversa] = await Promise.all([
+    db.contact.count({ where: { pharmacyId } }),
+    db.contact.count({ where: { pharmacyId, firstSeenAt: { gte: monthStart } } }),
+    db.contact.count({ where: { pharmacyId, firstSeenAt: { gte: since7d } } }),
+    db.contact.count({ where: { pharmacyId, cycles: { some: {} } } }),
+  ]);
+  return { total, novosMes, novos7d, comConversa };
+}
+
 export async function listCustomersVM(): Promise<ContactRowVM[]> {
   const { pharmacyId, role } = await getAuthorizedPharmacyContext();
   return fetchContactRows(pharmacyId, role);

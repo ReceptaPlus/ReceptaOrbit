@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/client.js";
 import { parseJid } from "./phone.js";
 import type { NormalizedMessage } from "./evolution-payload.js";
@@ -32,6 +33,11 @@ export async function ingestMessage(pharmacyId: string, msg: NormalizedMessage):
   }
 
   return prisma.$transaction(async (tx) => {
+    // Serializa por contato (lock cross-session do Postgres — vale entre instâncias do
+    // worker). Elimina a corrida da invariante "1 ciclo OPEN" e do dedup: duas mensagens
+    // concorrentes do mesmo contato passam a ser sequenciais. Liberado no fim da transação.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${pharmacyId}:${phoneE164}`}))`;
+
     const contact = await tx.contact.upsert({
       where: { pharmacyId_phoneE164: { pharmacyId, phoneE164 } },
       create: {
@@ -77,16 +83,26 @@ export async function ingestMessage(pharmacyId: string, msg: NormalizedMessage):
       cycleId = created.id;
     }
 
-    await tx.message.create({
-      data: {
-        pharmacyId,
-        cycleId,
-        direction: msg.fromMe ? "OUTBOUND" : "INBOUND",
-        textContent: msg.text,
-        providerMessageId: msg.providerMessageId,
-        sentAt: msg.sentAt,
-      },
-    });
+    try {
+      await tx.message.create({
+        data: {
+          pharmacyId,
+          cycleId,
+          direction: msg.fromMe ? "OUTBOUND" : "INBOUND",
+          textContent: msg.text,
+          providerMessageId: msg.providerMessageId,
+          sentAt: msg.sentAt,
+        },
+      });
+    } catch (err) {
+      // Rede de segurança contra corrida de replay: o pré-check de dedup roda fora da
+      // transação, então uma rajada concorrente pode colidir no unique aqui. Trata como
+      // duplicata (rollback da tx — nada é persistido), não como erro.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return { status: "duplicate" } as const;
+      }
+      throw err;
+    }
 
     return { status: "ok", cycleId } as const;
   });

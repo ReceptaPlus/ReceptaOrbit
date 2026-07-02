@@ -1,97 +1,94 @@
 import Link from "next/link";
-import { dashboard, formatBRL, formatDate, sales } from "@/lib/mock-data";
-import { ConfidencePill, SaleStatusBadge, SourceBadge } from "@/components/badges";
+import { listSalesVM, getLatestSalesReportVM } from "@/server/ia/queries";
 
-export default function VendasPage() {
+/* Vendas — alimentado pela IA (análise das conversas roda no n8n; o app só exibe).
+   Mostra o relatório do período (narrativa pro dono + métricas vendas×conversas) e a
+   lista de vendas identificadas. Sem análise ainda → estado "aguardando IA". */
+
+export default async function VendasPage() {
+  const [sales, report] = await Promise.all([listSalesVM(), getLatestSalesReportVM()]);
+
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-display">Vendas</h1>
-          <p className="text-sm text-secondary mt-1">
-            Vendas identificadas por IA, integração ou registro manual.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {["Período", "Origem", "Status", "Produto"].map((f) => (
-            <button
-              key={f}
-              className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm text-secondary hover:border-primary hover:text-primary transition-colors"
-            >
-              {f} ▾
-            </button>
-          ))}
-        </div>
+      <header className="animate-fade-in">
+        <h1 className="font-display text-display-lg font-bold tracking-tight text-ink">Vendas</h1>
+        <p className="mt-1 text-body text-secondary">
+          Vendas identificadas pela IA a partir das conversas do WhatsApp.
+        </p>
       </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Kpi label="Total vendido" value={formatBRL(dashboard.totalSoldCents)} />
-        <Kpi label="Vendas confirmadas" value={String(dashboard.confirmedSalesCount)} />
-        <Kpi label="Ticket médio" value={formatBRL(dashboard.avgTicketCents)} />
-        <Kpi label="Pendentes de revisão" value={String(dashboard.pendingReviewCount)} highlight />
-      </section>
+      {/* Relatório do dono (narrativa + métricas do período) */}
+      {report ? (
+        <section className="card-premium animate-fade-in-up p-5">
+          <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-subtitle font-semibold text-ink">Resumo do período</h2>
+            <span className="text-caption text-muted">{report.periodDisplay}</span>
+          </header>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Metric label="Vendas" value={String(report.salesCount)} />
+            <Metric label="Faturamento" value={report.salesValueDisplay} />
+            <Metric label="Conversas" value={String(report.conversationCount)} />
+            <Metric label="Conversão" value={report.conversionDisplay} />
+          </div>
+          <p className="mt-4 rounded-lg border border-line-subtle bg-cream-alt/30 p-4 text-small leading-relaxed text-ink">
+            {report.narrative}
+          </p>
+          <p className="mt-2 text-micro text-muted">Gerado por IA em {report.generatedAtDisplay}.</p>
+        </section>
+      ) : (
+        <section className="card-premium animate-fade-in-up flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+          <span className="inline-flex items-center rounded-full bg-info-bg px-3 py-1 text-caption font-semibold text-info-text">
+            Aguardando IA
+          </span>
+          <p className="max-w-md text-body text-secondary">
+            O relatório de vendas é gerado automaticamente pela IA a partir das suas conversas.
+            Assim que a primeira análise rodar, ele aparece aqui.
+          </p>
+        </section>
+      )}
 
-      <div className="bg-card rounded-xl border border-line overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-secondary border-b border-line">
-              <th className="px-4 py-3 font-medium">Cliente</th>
-              <th className="px-4 py-3 font-medium">Data</th>
-              <th className="px-4 py-3 font-medium">Origem</th>
-              <th className="px-4 py-3 font-medium">Campanha</th>
-              <th className="px-4 py-3 font-medium">Produtos</th>
-              <th className="px-4 py-3 font-medium text-right">Valor</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Identificação</th>
-              <th className="px-4 py-3 font-medium">Confiança</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-subtle">
+      {/* Lista de vendas identificadas */}
+      <section className="card-premium animate-fade-in-up p-0">
+        <header className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
+          <h2 className="font-display text-subtitle font-semibold text-ink">Vendas identificadas</h2>
+          <span className="text-caption text-muted">
+            {sales.length} {sales.length === 1 ? "venda" : "vendas"}
+          </span>
+        </header>
+        {sales.length === 0 ? (
+          <p className="px-5 py-10 text-center text-small text-secondary">Nenhuma venda identificada ainda.</p>
+        ) : (
+          <ul className="divide-y divide-line-subtle">
             {sales.map((s) => (
-              <tr key={s.id} className="hover:bg-subtle">
-                <td className="px-4 py-3 font-medium">{s.contactName}</td>
-                <td className="px-4 py-3 text-secondary">{formatDate(s.soldAt)}</td>
-                <td className="px-4 py-3"><SourceBadge source={s.attributionSource} /></td>
-                <td className="px-4 py-3 text-secondary">{s.campaignName ?? "—"}</td>
-                <td className="px-4 py-3 text-secondary">
-                  {s.items.map((i) => `${i.quantity}× ${i.productName}`).join(", ")}
-                </td>
-                <td className="px-4 py-3 text-right font-medium">{formatBRL(s.netAmountCents)}</td>
-                <td className="px-4 py-3"><SaleStatusBadge status={s.status} /></td>
-                <td className="px-4 py-3 text-secondary">
-                  {s.identificationSource === "AI" ? "IA" : s.identificationSource === "MANUAL" ? "Manual" : "Integração"}
-                </td>
-                <td className="px-4 py-3"><ConfidencePill value={s.confidence} /></td>
-                <td className="px-4 py-3">
-                  {s.status === "PENDING_REVIEW" && (
-                    <button className="rounded-lg bg-primary text-white px-3 py-1.5 text-xs font-medium hover:bg-primary-hover transition-colors">
-                      Confirmar
-                    </button>
+              <li key={s.cycleId} className="px-5 py-4">
+                <Link href={`/conversas/${s.cycleId}`} className="group flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink group-hover:text-brand-500">{s.contactName}</p>
+                    <p className="mt-0.5 line-clamp-2 text-small text-secondary">{s.summary}</p>
+                    <p className="mt-1 text-micro text-muted">{s.dateDisplay}</p>
+                  </div>
+                  {s.valueDisplay ? (
+                    <span className="shrink-0 font-display text-subtitle font-bold text-success-text" data-numeric>
+                      {s.valueDisplay}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-small text-muted">valor n/d</span>
                   )}
-                  {s.conversationCycleId !== "c-000" && s.status !== "PENDING_REVIEW" && (
-                    <Link
-                      href={`/conversas/${s.conversationCycleId}`}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Ver conversa
-                    </Link>
-                  )}
-                </td>
-              </tr>
+                </Link>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
-function Kpi({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`rounded-xl border p-5 ${highlight ? "bg-warning-bg border-warning-text/20" : "bg-card border-line"}`}>
-      <p className="text-sm text-secondary">{label}</p>
-      <p className="text-2xl font-bold font-display mt-1">{value}</p>
+    <div className="rounded-lg border border-line-subtle bg-white/50 p-3">
+      <p className="text-caption text-muted">{label}</p>
+      <p className="mt-1 font-display text-title font-bold text-ink" data-numeric>{value}</p>
     </div>
   );
 }

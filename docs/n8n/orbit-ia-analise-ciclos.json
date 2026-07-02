@@ -1,0 +1,205 @@
+{
+  "name": "Orbit IA — Análise de ciclos",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "Agendar_1h_",
+      "name": "Agendar (1h)"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/pending?limit=20",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "GET_ciclos_pendentes",
+      "name": "GET ciclos pendentes",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Orbit IA x-ia-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Explode a lista de ciclos em 1 item por ciclo e monta o corpo da chamada ao Claude.\nconst SYSTEM = \"Você é um analista de vendas de farmácia. Recebe a transcrição de UMA conversa de WhatsApp entre a farmácia e um cliente e classifica o desfecho. Responda APENAS com um objeto JSON (sem markdown, sem texto fora do JSON) com as chaves: isSale (boolean: a conversa resultou em venda concluída), saleValueCents (inteiro em centavos de BRL do valor estimado da venda, ou null se não houver/indefinido), stage (string curta do estágio, ex.: 'Cotação', 'Negociação', 'Venda fechada', 'Perdida', ou null), lossReason (string curta do motivo de não-venda, ou null quando isSale=true), summary (resumo em pt-BR, 1 a 3 frases), confidence (número de 0 a 1 com sua confiança). Não invente valores: se o preço não aparece, use null.\";\nconst MODEL = \"claude-sonnet-5\";\nconst data = $input.first().json;\nconst cycles = Array.isArray(data.cycles) ? data.cycles : [];\nreturn cycles.map((c) => {\n  const transcript = (c.messages || [])\n    .map((m) => (m.direction === 'INBOUND' ? 'Cliente' : 'Farmácia') + ': ' + m.text)\n    .join('\\n');\n  const userContent = 'Conversa com o contato \"' + c.contactName + '\":\\n\\n' + transcript + '\\n\\nResponda só com o JSON.';\n  return {\n    json: {\n      cycleId: c.cycleId,\n      pharmacyId: c.pharmacyId,\n      lastMessageAt: c.lastMessageAt,\n      model: MODEL,\n      body: {\n        model: MODEL,\n        max_tokens: 500,\n        system: SYSTEM,\n        messages: [{ role: 'user', content: userContent }],\n      },\n    },\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "Preparar_ciclos",
+      "name": "Preparar ciclos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        660,
+        0
+      ],
+      "id": "Claude_classificar",
+      "name": "Claude — classificar",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic x-api-key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Junta cada resposta do Claude com os metadados do ciclo (mesma ordem) e monta o lote.\nconst responses = $input.all();\nconst metas = $('Preparar ciclos').all();\nconst results = responses.map((r, i) => {\n  const meta = metas[i].json;\n  let text = '';\n  try { text = r.json.content[0].text; } catch (e) {}\n  let p = {};\n  try { p = JSON.parse(String(text).replace(/```json/gi, '').replace(/```/g, '').trim()); }\n  catch (e) { p = { isSale: false, summary: 'Falha ao interpretar a resposta da IA.', confidence: 0 }; }\n  return {\n    cycleId: meta.cycleId,\n    pharmacyId: meta.pharmacyId,\n    isSale: p.isSale === true,\n    saleValueCents: Number.isFinite(p.saleValueCents) ? Math.round(p.saleValueCents) : null,\n    stage: p.stage != null ? String(p.stage) : null,\n    lossReason: p.lossReason != null ? String(p.lossReason) : null,\n    summary: String(p.summary || '').slice(0, 4000),\n    confidence: (typeof p.confidence === 'number' && p.confidence >= 0 && p.confidence <= 1) ? p.confidence : 0,\n    model: meta.model,\n    analyzedThroughMessageAt: meta.lastMessageAt,\n  };\n});\nreturn [{ json: { results } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "Montar_resultados",
+      "name": "Montar resultados"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/results",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { results: $json.results } }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "POST_resultados",
+      "name": "POST resultados",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Orbit IA x-ia-secret"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Agendar (1h)": {
+      "main": [
+        [
+          {
+            "node": "GET ciclos pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET ciclos pendentes": {
+      "main": [
+        [
+          {
+            "node": "Preparar ciclos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar ciclos": {
+      "main": [
+        [
+          {
+            "node": "Claude — classificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude — classificar": {
+      "main": [
+        [
+          {
+            "node": "Montar resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar resultados": {
+      "main": [
+        [
+          {
+            "node": "POST resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

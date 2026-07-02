@@ -1,60 +1,33 @@
-import Link from "next/link";
-import { listCustomersVM } from "@/modules/customers/queries";
+import { listCustomersVM, getCustomersKpis } from "@/modules/customers/queries";
+import { KpiCard } from "@/components/kpi-card";
+import { ClientesTable } from "./clientes-table";
 
 export default async function ClientesPage() {
-  const contacts = await listCustomersVM();
+  const [contacts, kpis] = await Promise.all([listCustomersVM(), getCustomersKpis()]);
+
+  const KPIS = [
+    { label: "Clientes", value: String(kpis.total), hint: "base total", accent: true },
+    { label: "Novos no mês", value: String(kpis.novosMes), hint: "1º contato no mês" },
+    { label: "Novos (7d)", value: String(kpis.novos7d), hint: "últimos 7 dias" },
+    { label: "Com conversa", value: String(kpis.comConversa), hint: "ao menos 1 ciclo", accent: true },
+  ];
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold font-display">Clientes</h1>
-          <p className="text-sm text-secondary mt-1">
-            Contatos consolidados por telefone (E.164). {contacts.length} contato{contacts.length === 1 ? "" : "s"}.
-          </p>
-        </div>
-        <input
-          type="search"
-          placeholder="Buscar por nome ou telefone…"
-          className="rounded-lg border border-line bg-card px-3.5 py-2 text-sm w-64 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-        />
+      <header className="animate-fade-in">
+        <h1 className="font-display text-display-lg font-bold tracking-tight text-ink">Clientes</h1>
+        <p className="mt-1 text-body text-secondary">
+          Base consolidada por telefone — primeiro contato, recência e volume de conversas.
+        </p>
       </header>
 
-      {contacts.length === 0 ? (
-        <div className="bg-card rounded-xl border border-line p-10 text-center">
-          <p className="font-medium font-display">Nenhum contato ainda</p>
-          <p className="text-sm text-secondary mt-1">Os contatos surgem na primeira mensagem recebida.</p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-xl border border-line overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-secondary border-b border-line">
-                <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Telefone</th>
-                <th className="px-4 py-3 font-medium">Primeiro contato</th>
-                <th className="px-4 py-3 font-medium">Último contato</th>
-                <th className="px-4 py-3 font-medium text-right">Conversas</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-subtle">
-              {contacts.map((c) => (
-                <tr key={c.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3">
-                    <Link href={`/clientes/${c.id}`} className="font-medium hover:text-primary">
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-secondary">{c.phoneDisplay}</td>
-                  <td className="px-4 py-3 text-secondary">{c.firstSeen}</td>
-                  <td className="px-4 py-3 text-secondary">{c.lastSeen}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{c.conversationCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {KPIS.map((k, i) => (
+          <KpiCard key={k.label} {...k} index={i} />
+        ))}
+      </div>
+
+      <ClientesTable rows={contacts} />
     </div>
   );
 }

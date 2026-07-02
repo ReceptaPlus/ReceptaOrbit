@@ -16,6 +16,9 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
 });
 
+/* Nexa (manual da marca) só vem como Trial/Demo no Brand Kit — marca d'água nos
+   números e sem "ç". Web usa Poppins como substituta oficial (display). */
+
 export const metadata: Metadata = {
   title: "Recepta Orbit",
   description: "CRM e Analytics de conversas WhatsApp para farmácias",

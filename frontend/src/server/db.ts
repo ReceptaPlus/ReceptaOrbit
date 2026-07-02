@@ -1,8 +1,9 @@
 import "server-only";
 import { PrismaClient } from "@prisma/client";
 
-/* Prisma Client do app web (Next). Lê DATABASE_URL (Railway). Schema é o mesmo do
-   backend (cópia gerada por db:pull-schema). Singleton p/ não esgotar conexões em dev. */
+/* Prisma Client do app web (Next). Lê DATABASE_URL (mesmo Postgres do backend).
+   Singleton para não esgotar conexões em hot-reload. Sem fallback em memória:
+   sem DATABASE_URL o Prisma falha alto (fail-closed) — não há mais modo demo. */
 const globalForPrisma = globalThis as unknown as { db?: PrismaClient };
 
 export const db =

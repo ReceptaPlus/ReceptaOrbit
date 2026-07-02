@@ -2,29 +2,76 @@ import Link from "next/link";
 import { requireCan } from "@/server/auth/dal";
 import { logoutAction } from "@/server/auth/login";
 
+const NAV = [
+  { href: "/admin/farmacias", label: "Farmácias", live: true },
+  { href: "/admin/usuarios", label: "Usuários", live: true },
+  { href: "#", label: "Integrações", live: false },
+  { href: "#", label: "Webhooks", live: false },
+  { href: "#", label: "Jobs", live: false },
+  { href: "#", label: "Auditoria", live: false },
+];
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Área de plataforma — só PLATFORM_ADMIN/SUPPORT (requireCan redireciona os demais).
   await requireCan("access_admin");
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-line bg-card">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="font-display font-semibold">Recepta Orbit · Admin</span>
-            <nav className="flex gap-4 text-small text-neutral-600">
-              <Link href="/admin/farmacias" className="hover:text-brand-500">Farmácias</Link>
-              <Link href="/admin/usuarios" className="hover:text-brand-500">Usuários</Link>
+    <div className="relative min-h-screen">
+      <div className="atmosphere" aria-hidden>
+        <span className="orb" />
+        <span className="mesh" />
+      </div>
+
+      <header className="glass-strong sticky top-0 z-20 border-b border-line">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/mark-gradient.svg" alt="Recepta" className="h-8 w-8" />
+              <div className="leading-tight">
+                <p className="font-display text-subtitle font-bold text-ink">Recepta Orbit</p>
+                <p className="text-micro font-medium uppercase tracking-[0.14em] text-brand-500">Admin · Plataforma</p>
+              </div>
+            </div>
+            <nav className="hidden items-center gap-1 md:flex">
+              {NAV.map((n) =>
+                n.live ? (
+                  <Link
+                    key={n.label}
+                    href={n.href}
+                    className="rounded-lg px-3 py-1.5 text-small font-medium text-secondary transition-colors hover:bg-cream-alt/60 hover:text-ink"
+                  >
+                    {n.label}
+                  </Link>
+                ) : (
+                  <span
+                    key={n.label}
+                    title="Em breve"
+                    className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-1.5 text-small font-medium text-muted/70"
+                  >
+                    {n.label}
+                    <span className="rounded-full bg-cream-alt px-1.5 text-[9px] font-semibold uppercase text-muted">soon</span>
+                  </span>
+                )
+              )}
             </nav>
           </div>
-          <form action={logoutAction}>
-            <button type="submit" className="text-small text-neutral-600 hover:text-brand-500">
-              Sair
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="hidden text-small text-secondary transition-colors hover:text-brand-500 sm:block">
+              ← App
+            </Link>
+            <form action={logoutAction}>
+              <button type="submit" className="rounded-lg border border-line bg-white/70 px-3 py-1.5 text-small font-medium text-secondary transition-colors hover:border-brand-400 hover:text-brand-500">
+                Sair
+              </button>
+            </form>
+          </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
+
+      <main className="relative z-10 mx-auto max-w-6xl px-6 py-8">
+        <div className="animate-fade-in-up">{children}</div>
+      </main>
     </div>
   );
 }
