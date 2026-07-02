@@ -55,6 +55,14 @@ export async function getAuthorizedPharmacyContext(): Promise<PharmacyContext> {
     const staff = await db.platformStaff.findUnique({ where: { userId: session.userId }, select: { userId: true } });
     redirect(staff ? "/admin" : "/login");
   }
+  // Impersonação de suporte: staff assumiu este tenant (sem Membership). Revalida a cada
+  // request que a conta AINDA é staff de plataforma antes de conceder o contexto — se o
+  // vínculo de staff sumiu, a impersonação cai. Papel efetivo = o da sessão (MANAGER).
+  if (session.impersonating) {
+    const staff = await db.platformStaff.findUnique({ where: { userId: session.userId }, select: { userId: true } });
+    if (!staff) redirect("/login");
+    return { userId: session.userId, pharmacyId: session.pharmacyId, role: session.role as TenantRole };
+  }
   const membership = await db.membership.findUnique({
     where: { pharmacyId_userId: { pharmacyId: session.pharmacyId, userId: session.userId } },
   });

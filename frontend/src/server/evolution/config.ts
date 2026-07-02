@@ -32,18 +32,6 @@ export function getWebhookSecret(): string | null {
   return process.env.EVOLUTION_WEBHOOK_SECRET ?? null;
 }
 
-<<<<<<< HEAD
-/** URL pública do endpoint de ingestão que a Evolution deve chamar (POST). Já com
-   ?secret= anexado quando EVOLUTION_WEBHOOK_SECRET está setado. Null = não configurada
-   (o pareamento segue, mas nenhuma mensagem chega — logamos o aviso). */
-export function getWebhookUrl(): string | null {
-  const raw = process.env.EVOLUTION_WEBHOOK_URL;
-  if (!raw) return null;
-  const base = raw.replace(/\/$/, "");
-  const secret = getWebhookSecret();
-  if (!secret) return base;
-  return base + (base.includes("?") ? "&" : "?") + "secret=" + encodeURIComponent(secret);
-=======
 export interface WebhookSetup {
   url: string;
   events: string[];
@@ -58,5 +46,4 @@ export function getWebhookSetup(): WebhookSetup | null {
   const secret = getWebhookSecret();
   const url = secret ? `${base}${base.includes("?") ? "&" : "?"}secret=${encodeURIComponent(secret)}` : base;
   return { url, events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"] };
->>>>>>> 381c05421ddd0836070f8d5572bb400460d33cb3
 }

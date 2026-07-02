@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { BottomTabs } from "@/components/bottom-tabs";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { requireSession } from "@/server/auth/dal";
+import { exitImpersonationAction } from "@/server/auth/impersonation";
 import { db } from "@/server/db";
 import { can } from "@/modules/tenancy/authz";
 import { countUnreadConversations } from "@/modules/conversations/queries";
@@ -43,15 +44,33 @@ export default async function DashboardLayout({ children }: { children: React.Re
   };
 
   return (
-    <div className="relative flex flex-1">
-      <div className="atmosphere" aria-hidden>
+    <>
+      {session.impersonating ? (
+        <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-warning-text/20 bg-warning-bg px-4 py-2 text-small font-medium text-warning-text">
+          <span>
+            Você está acessando <strong>{pharmacy?.tradeName ?? "esta conta"}</strong> como suporte Recepta —
+            todas as ações ficam registradas em seu nome.
+          </span>
+          <form action={exitImpersonationAction}>
+            <button
+              type="submit"
+              className="rounded-md border border-warning-text/40 bg-white/50 px-3 py-0.5 font-semibold transition-colors hover:bg-white/80"
+            >
+              Sair da conta
+            </button>
+          </form>
+        </div>
+      ) : null}
+      <div className="relative flex flex-1">
+        <div className="atmosphere" aria-hidden>
         <span className="orb" />
         <span className="mesh" />
       </div>
-      <Sidebar user={sidebarUser} />
-      <main className="relative z-10 flex-1 min-w-0 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">{children}</main>
-      <BottomTabs />
-      <CommandPalette />
-    </div>
+        <Sidebar user={sidebarUser} />
+        <main className="relative z-10 flex-1 min-w-0 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">{children}</main>
+        <BottomTabs />
+        <CommandPalette />
+      </div>
+    </>
   );
 }

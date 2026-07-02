@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { requireCan } from "@/server/auth/dal";
 import { InviteUserForm } from "./invite-user-form";
+import { EnterPharmacyForm } from "./enter-pharmacy-form";
 import { DeleteUserButton } from "./delete-user-button";
 import { ResetPasswordButton } from "./reset-password-button";
 
@@ -40,6 +41,8 @@ export default async function AdminUsuariosPage() {
         <h1 className="font-display text-display-lg font-bold tracking-tight text-ink">Usuários</h1>
         <p className="mt-1 text-body text-secondary">{memberships.length} vínculo{memberships.length === 1 ? "" : "s"} entre usuários e farmácias.</p>
       </header>
+
+      <EnterPharmacyForm pharmacies={pharmacies} />
 
       <InviteUserForm pharmacies={pharmacies} />
 

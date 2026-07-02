@@ -24,6 +24,9 @@ const sessionSchema = z.object({
   role: z.enum(["OWNER", "MANAGER", "VIEWER", "PLATFORM_ADMIN", "PLATFORM_SUPPORT"]),
   sessionVersion: z.number().int(),
   onboardingRequired: z.boolean(),
+  // Suporte de plataforma assumindo um tenant (impersonação). Quando true, pharmacyId
+  // aponta p/ a farmácia acessada e role é o papel EFETIVO dentro dela (MANAGER).
+  impersonating: z.boolean().optional(),
 });
 
 export type SessionPayload = z.infer<typeof sessionSchema>;

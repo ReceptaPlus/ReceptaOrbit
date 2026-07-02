@@ -1,9 +1,5 @@
 import "server-only";
-<<<<<<< HEAD
-import { getEvolutionConfig, getWebhookUrl } from "./config";
-=======
 import { getEvolutionConfig, getWebhookSetup } from "./config";
->>>>>>> 381c05421ddd0836070f8d5572bb400460d33cb3
 
 /* Cliente REST da Evolution API (pareamento WhatsApp). Usado pelas server actions da
    tela de configuração. Mantém o apikey fora do client bundle.
@@ -41,35 +37,6 @@ export async function getConnectionState(instance: string): Promise<WhatsAppStat
   }
 }
 
-<<<<<<< HEAD
-/* Registra (idempotente) o webhook de ingestão NA instância. SEM isto a Evolution não
-   tem para onde entregar MESSAGES_UPSERT → nenhuma conversa chega ao app, mesmo com o
-   WhatsApp pareado. Chamado em todo connect (conserta também instâncias antigas). */
-async function setWebhook(instance: string): Promise<void> {
-  const url = getWebhookUrl();
-  if (!url) {
-    console.warn("[evolution] EVOLUTION_WEBHOOK_URL não definida — webhook NÃO registrado; nenhuma mensagem chegará.");
-    return;
-  }
-  const r = await call(`/webhook/set/${instance}`, {
-    method: "POST",
-    body: JSON.stringify({
-      webhook: {
-        enabled: true,
-        url,
-        webhookByEvents: false,
-        webhookBase64: false,
-        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
-      },
-    }),
-  });
-  if (!r.ok) console.warn(`[evolution] webhook/set falhou (HTTP ${r.status}) para ${instance}`);
-}
-
-/** Garante que a instância existe (cria se 404 no connect) e que o webhook está registrado. */
-async function ensureInstance(): Promise<void> {
-  const { instance } = getEvolutionConfig();
-=======
 /** Registra o nosso webhook na instância (idempotente; best-effort). Sem URL pública
     configurada, pula — o pareamento segue, mas não chegam eventos automaticamente. */
 async function setWebhook(instance: string): Promise<void> {
@@ -89,7 +56,6 @@ async function setWebhook(instance: string): Promise<void> {
 
 /** Garante que a instância existe (cria se 404) e (re)afirma o webhook. */
 async function ensureInstance(instance: string): Promise<void> {
->>>>>>> 381c05421ddd0836070f8d5572bb400460d33cb3
   const state = await call(`/instance/connectionState/${instance}`);
   if (state.status === 404) {
     await call(`/instance/create`, {
