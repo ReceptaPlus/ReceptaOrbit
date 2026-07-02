@@ -1,5 +1,5 @@
 import "server-only";
-import { getEvolutionConfig } from "./config";
+import { getEvolutionConfig, getWebhookUrl } from "./config";
 
 /* Cliente REST da Evolution API (pareamento WhatsApp). Usado pelas server actions da
    tela de configuração. Mantém o accessToken/apikey fora do client bundle. */
@@ -37,7 +37,31 @@ export async function getConnectionState(): Promise<WhatsAppState | null> {
   }
 }
 
-/** Garante que a instância existe (cria se 404 no connect). */
+/* Registra (idempotente) o webhook de ingestão NA instância. SEM isto a Evolution não
+   tem para onde entregar MESSAGES_UPSERT → nenhuma conversa chega ao app, mesmo com o
+   WhatsApp pareado. Chamado em todo connect (conserta também instâncias antigas). */
+async function setWebhook(instance: string): Promise<void> {
+  const url = getWebhookUrl();
+  if (!url) {
+    console.warn("[evolution] EVOLUTION_WEBHOOK_URL não definida — webhook NÃO registrado; nenhuma mensagem chegará.");
+    return;
+  }
+  const r = await call(`/webhook/set/${instance}`, {
+    method: "POST",
+    body: JSON.stringify({
+      webhook: {
+        enabled: true,
+        url,
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+      },
+    }),
+  });
+  if (!r.ok) console.warn(`[evolution] webhook/set falhou (HTTP ${r.status}) para ${instance}`);
+}
+
+/** Garante que a instância existe (cria se 404 no connect) e que o webhook está registrado. */
 async function ensureInstance(): Promise<void> {
   const { instance } = getEvolutionConfig();
   const state = await call(`/instance/connectionState/${instance}`);
@@ -47,6 +71,7 @@ async function ensureInstance(): Promise<void> {
       body: JSON.stringify({ instanceName: instance, integration: "WHATSAPP-BAILEYS", qrcode: true }),
     });
   }
+  await setWebhook(instance);
 }
 
 export interface PairingResult {
