@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { KpiCard } from "@/components/kpi-card";
 import { BarChart } from "@/components/charts/bar-chart";
+import { DonutChart } from "@/components/charts/donut-chart";
 import { IconCart, IconChat, IconUsers } from "@/components/icons";
 import { getDashboardVolumeVM, getAdsCardsVM } from "@/modules/dashboard/queries";
+import { getLatestSalesReportVM } from "@/server/ia/queries";
 import type { ProviderMetrics } from "@/server/agente/ads";
 
-/* Dashboard operacional — V1 (ingestão, sem IA). Métricas REAIS de volume
-   (conversas, contatos, mensagens) do tenant + cards de anúncio (Meta/Google) quando
-   o Agente está configurado. Receita/atribuição/vendas chegam com o módulo de IA. */
+/* Dashboard operacional — volume REAL (conversas, contatos, mensagens) do tenant +
+   cards de anúncio (Meta/Google) quando o Agente está configurado + resumo de vendas
+   (funil leads→conversas→vendas e conversão) pela IA. O detalhe venda a venda vive em
+   /vendas; aqui é só o panorama em gráficos. Atribuição de campanha chega depois. */
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
 const money = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -45,7 +48,11 @@ function AdsCard({ provider, m }: { provider: string; m: ProviderMetrics }) {
 }
 
 export default async function DashboardPage() {
-  const [vol, ads] = await Promise.all([getDashboardVolumeVM(), getAdsCardsVM(7)]);
+  const [vol, ads, report] = await Promise.all([
+    getDashboardVolumeVM(),
+    getAdsCardsVM(7),
+    getLatestSalesReportVM(),
+  ]);
 
   const kpis = [
     { label: "Conversas abertas", value: nf(vol.activeConversations), hint: "ciclos ativos", accent: true, icon: <IconChat size={16} /> },
@@ -53,6 +60,17 @@ export default async function DashboardPage() {
     { label: "Mensagens", value: nf(vol.messages7d), hint: "últimos 7 dias", icon: <IconChat size={16} /> },
     { label: "Conversas encerradas", value: nf(vol.closedCycles7d), hint: "últimos 7 dias" },
   ];
+
+  // Funil resumido do período (mesmos dados de /vendas, sem lista conversa a conversa).
+  // Leads = novos contatos (volume); conversas/vendas = snapshot da IA.
+  const salesFunnel = report
+    ? [
+        { label: "Leads", value: vol.newContacts7d },
+        { label: "Conversas", value: report.conversationCount },
+        { label: "Vendas", value: report.salesCount },
+      ]
+    : [];
+  const noSaleCount = report ? Math.max(0, report.conversationCount - report.salesCount) : 0;
 
   return (
     <div className="space-y-6">
@@ -68,8 +86,8 @@ export default async function DashboardPage() {
               Conversas do WhatsApp, num só lugar
             </h1>
             <p className="mt-1.5 max-w-md text-body text-secondary">
-              Acompanhe o volume de atendimento da sua farmácia. Atribuição de campanha e
-              vendas entram com o módulo de IA.
+              Acompanhe volume de atendimento, vendas e conversão da sua farmácia.
+              Atribuição de campanha entra com o módulo de IA.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/conversas" className="btn-primary !h-10 text-small">Ver conversas</Link>
@@ -124,19 +142,68 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Vendas/atribuição — dependem da IA */}
-      <Card title="Vendas e atribuição">
-        <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-line bg-cream-alt/30 p-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-2.5 py-0.5 text-micro font-semibold text-info-text">
-            <IconCart size={13} /> Em breve
-          </span>
-          <p className="text-small font-medium text-ink">Receita, conversão e atribuição de campanha</p>
-          <p className="max-w-xl text-caption text-secondary">
-            Estas métricas nascem da análise das conversas pela IA (identificação de venda,
-            origem e valor). Entram quando o módulo de vendas/IA for ativado.
-          </p>
+      {/* Vendas e conversão — resumo em gráficos (detalhe venda a venda em /vendas) */}
+      {report ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Funil: leads → conversas → vendas */}
+          <Card
+            title="Funil de vendas"
+            className="lg:col-span-2"
+            action={
+              <Link href="/vendas" className="text-caption font-medium text-brand-500 transition-colors hover:text-brand-600">
+                Ver vendas →
+              </Link>
+            }
+          >
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              <MiniStat label="Vendas" value={nf(report.salesCount)} icon={<IconCart size={13} />} />
+              <MiniStat label="Faturamento" value={report.salesValueDisplay} />
+              <MiniStat label="Conversão" value={report.conversionDisplay} accent />
+            </div>
+            <BarChart data={salesFunnel} height={190} />
+            <p className="mt-2 text-micro text-muted">Leads → conversas → vendas · {report.periodDisplay}</p>
+          </Card>
+
+          {/* Venda × conversa (share convertido) */}
+          <Card title="Venda × conversa">
+            <DonutChart
+              data={[
+                { label: "Vendas", value: report.salesCount, color: "#D4432C" },
+                { label: "Sem venda", value: noSaleCount, color: "#ECE6DA" },
+              ]}
+              centerLabel="conversas"
+            />
+          </Card>
         </div>
-      </Card>
+      ) : (
+        <Card title="Vendas e conversão">
+          <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-line bg-cream-alt/30 p-5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-2.5 py-0.5 text-micro font-semibold text-info-text">
+              <IconCart size={13} /> Aguardando IA
+            </span>
+            <p className="text-small font-medium text-ink">Vendas, conversão e faturamento do período</p>
+            <p className="max-w-xl text-caption text-secondary">
+              Assim que a IA analisar as conversas, o resumo de vendas aparece aqui em
+              gráficos. O detalhe venda a venda fica em{" "}
+              <Link href="/vendas" className="font-medium text-brand-500 hover:text-brand-600">Vendas</Link>.
+            </p>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function MiniStat({ label, value, icon, accent = false }: { label: string; value: string; icon?: React.ReactNode; accent?: boolean }) {
+  return (
+    <div className={`rounded-lg border border-line-subtle p-3 ${accent ? "bg-brand-50/60" : "bg-white/50"}`}>
+      <div className="flex items-center gap-1.5 text-caption text-muted">
+        {icon}
+        {label}
+      </div>
+      <p className={`mt-1 font-display text-subtitle font-bold ${accent ? "text-brand-600" : "text-ink"}`} data-numeric>
+        {value}
+      </p>
     </div>
   );
 }

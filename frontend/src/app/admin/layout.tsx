@@ -3,12 +3,8 @@ import { requireCan } from "@/server/auth/dal";
 import { logoutAction } from "@/server/auth/login";
 
 const NAV = [
-  { href: "/admin/farmacias", label: "Farmácias", live: true },
-  { href: "/admin/usuarios", label: "Usuários", live: true },
-  { href: "#", label: "Integrações", live: false },
-  { href: "#", label: "Webhooks", live: false },
-  { href: "#", label: "Jobs", live: false },
-  { href: "#", label: "Auditoria", live: false },
+  { href: "/admin/farmacias", label: "Farmácias" },
+  { href: "/admin/usuarios", label: "Usuários" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,26 +30,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </div>
             </div>
             <nav className="hidden items-center gap-1 md:flex">
-              {NAV.map((n) =>
-                n.live ? (
-                  <Link
-                    key={n.label}
-                    href={n.href}
-                    className="rounded-lg px-3 py-1.5 text-small font-medium text-secondary transition-colors hover:bg-cream-alt/60 hover:text-ink"
-                  >
-                    {n.label}
-                  </Link>
-                ) : (
-                  <span
-                    key={n.label}
-                    title="Em breve"
-                    className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-1.5 text-small font-medium text-muted/70"
-                  >
-                    {n.label}
-                    <span className="rounded-full bg-cream-alt px-1.5 text-[9px] font-semibold uppercase text-muted">soon</span>
-                  </span>
-                )
-              )}
+              {NAV.map((n) => (
+                <Link
+                  key={n.label}
+                  href={n.href}
+                  className="rounded-lg px-3 py-1.5 text-small font-medium text-secondary transition-colors hover:bg-cream-alt/60 hover:text-ink"
+                >
+                  {n.label}
+                </Link>
+              ))}
             </nav>
           </div>
           <div className="flex items-center gap-3">
