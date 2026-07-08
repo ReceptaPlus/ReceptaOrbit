@@ -52,6 +52,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </form>
           </div>
         </div>
+
+        {/* Nav mobile: abas sempre visíveis no topo (desktop usa a nav inline acima) */}
+        <nav className="flex items-center gap-1 overflow-x-auto border-t border-line px-6 py-2 md:hidden">
+          {NAV.map((n) => (
+            <Link
+              key={n.label}
+              href={n.href}
+              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-small font-medium text-secondary transition-colors hover:bg-cream-alt/60 hover:text-ink"
+            >
+              {n.label}
+            </Link>
+          ))}
+        </nav>
       </header>
 
       <main className="relative z-10 mx-auto max-w-6xl px-6 py-8">
