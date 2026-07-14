@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  IconCart,
   IconChat,
   IconDashboard,
   IconMore,
   IconUsers,
 } from "@/components/icons";
 
-// V1 (espionagem): sem Vendas.
 const TABS = [
   { href: "/dashboard", label: "Geral", exact: true, icon: IconDashboard },
   { href: "/conversas", label: "Conversas", icon: IconChat },
+  { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
   { href: "/configuracoes", label: "Mais", icon: IconMore },
 ];
