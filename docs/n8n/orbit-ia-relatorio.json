@@ -3,30 +3,32 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 8,
-              "triggerAtMinute": 0
-            }
-          ]
-        }
+        "httpMethod": "POST",
+        "path": "orbit-ia-relatorio",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
       },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
       "position": [
         0,
         0
       ],
-      "id": "Agendar_di_rio_08h_",
-      "name": "Agendar (diário 08h)"
+      "id": "Webhook_login_relatorio",
+      "name": "Webhook (login)",
+      "webhookId": "orbit-ia-relatorio",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Orbit IA x-ia-secret"
+        }
+      }
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "https://receptaorbit-production.up.railway.app/api/internal/ia/report/pending?days=7",
+        "url": "=https://receptaorbit-production.up.railway.app/api/internal/ia/report/pending?days=7&pharmacyId={{ $json.body.pharmacyId || '' }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -144,7 +146,7 @@
     }
   ],
   "connections": {
-    "Agendar (diário 08h)": {
+    "Webhook (login)": {
       "main": [
         [
           {

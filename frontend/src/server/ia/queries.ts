@@ -22,10 +22,12 @@ export interface PendingCycleDTO {
 /* Ciclos a analisar: CLOSED (conversa encerrada — desfecho já definido) e ainda SEM
    análise. Ciclos novos sempre nascem em outro registro, então CLOSED é final; a
    coluna analyzedThroughMessageAt existe para suportar re-análise de OPEN no futuro.
-   Mais antigos primeiro (fila justa). Limite controla custo/lote do n8n. */
-export async function fetchPendingCycles(limit: number): Promise<PendingCycleDTO[]> {
+   Mais antigos primeiro (fila justa). Limite controla custo/lote do n8n.
+   `pharmacyId` (opcional): escopa ao tenant de quem logou — o disparo agora é por login,
+   não mais cron cross-tenant. Sem o filtro, mantém o comportamento antigo (todas). */
+export async function fetchPendingCycles(limit: number, pharmacyId?: string): Promise<PendingCycleDTO[]> {
   const cycles = await db.conversationCycle.findMany({
-    where: { status: "CLOSED", analysis: { is: null } },
+    where: { status: "CLOSED", analysis: { is: null }, ...(pharmacyId ? { pharmacyId } : {}) },
     orderBy: { lastMessageAt: "asc" },
     take: limit,
     include: {
@@ -102,28 +104,43 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* Snapshot por farmácia para o n8n só escrever a narrativa. Período = últimos `days`
    dias. Só farmácias ATIVAS com ao menos 1 conversa no período (sem dado, sem relatório).
-   Vendas = análises com isSale cujo ciclo caiu na janela (lastMessageAt). */
-export async function fetchReportInputs(days = 7): Promise<ReportInputDTO[]> {
+   Vendas = análises com isSale cujo ciclo caiu na janela (lastMessageAt).
+   `pharmacyId` (opcional): escopa ao tenant de quem logou (disparo por login).
+   Gate de staleness: pula farmácia cujo último relatório já é mais novo que a última
+   análise — sem dado novo, não gasta uma narrativa nova. Mata o loop diário antigo. */
+export async function fetchReportInputs(days = 7, pharmacyId?: string): Promise<ReportInputDTO[]> {
   const periodEnd = new Date();
   const periodStart = new Date(periodEnd.getTime() - days * DAY_MS);
   const window = { gte: periodStart, lte: periodEnd };
 
   const pharmacies = await db.pharmacy.findMany({
-    where: { status: "ACTIVE" },
+    where: { status: "ACTIVE", ...(pharmacyId ? { id: pharmacyId } : {}) },
     select: { id: true, tradeName: true },
   });
 
   const rows = await Promise.all(
     pharmacies.map(async (p) => {
-      const [conversationCount, salesAgg] = await Promise.all([
+      const [conversationCount, salesAgg, lastReport, lastAnalysis] = await Promise.all([
         db.conversationCycle.count({ where: { pharmacyId: p.id, lastMessageAt: window } }),
         db.cycleAnalysis.aggregate({
           where: { pharmacyId: p.id, isSale: true, cycle: { lastMessageAt: window } },
           _count: true,
           _sum: { saleValueCents: true },
         }),
+        db.salesReport.findFirst({
+          where: { pharmacyId: p.id },
+          orderBy: { generatedAt: "desc" },
+          select: { generatedAt: true },
+        }),
+        db.cycleAnalysis.findFirst({
+          where: { pharmacyId: p.id },
+          orderBy: { analyzedAt: "desc" },
+          select: { analyzedAt: true },
+        }),
       ]);
       if (conversationCount === 0) return null;
+      // Nada novo desde o último relatório → não regenera (evita narrativa diária repetida).
+      if (lastReport && lastAnalysis && lastAnalysis.analyzedAt <= lastReport.generatedAt) return null;
       const salesCount = salesAgg._count;
       return {
         pharmacyId: p.id,

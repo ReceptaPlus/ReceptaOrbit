@@ -1,21 +1,35 @@
 # IA de conversas — n8n + endpoints internos
 
-A análise das conversas roda **fora do app**, num **n8n** dedicado, disparada por cron
-(Schedule Trigger nativo do n8n). O app só **serve as conversas** e **persiste o resultado**
-via endpoints internos. O n8n **nunca** acessa a Evolution/Digisac — só fala com o site.
+A análise das conversas roda **fora do app**, num **n8n** dedicado. Desde a virada de custo,
+o disparo é **por login** (não mais cron): quando um usuário entra, o app chuta o webhook do
+n8n **só para a farmácia dele**. Farmácia sem login = zero custo de Claude. O app só **serve
+as conversas** e **persiste o resultado**; o n8n **nunca** acessa a Evolution/Digisac.
 
 ```
-n8n Schedule → GET pendentes → Claude (nó HTTP) → POST resultado → (telas /vendas e detalhe)
+Login (app) → Webhook n8n (por pharmacyId) → GET pendentes → Claude (nó HTTP) → POST resultado → (telas /vendas e detalhe)
 ```
 
-Dois workflows (importáveis nesta pasta):
+Por que login em vez de cron:
+- **Análise de ciclos** é idempotente (1×/ciclo, `upsert`); o cron horário só adiava, não
+  economizava. No login, farmácias inativas nunca são analisadas.
+- **Relatório** era o vazamento real: o cron diário regerava a narrativa de toda farmácia
+  ativa todo dia. Agora só regera quando há **análise nova** desde o último relatório
+  (gate de staleness em `fetchReportInputs`).
+- **Throttle**: o app não redispara a mesma farmácia se já disparou < 30 min (in-memory).
 
-| Arquivo | O que faz | Cadência sugerida |
+Dois workflows (importáveis nesta pasta), ambos disparados pelo **mesmo login**:
+
+| Arquivo | O que faz | Trigger |
 |---|---|---|
-| [orbit-ia-analise-ciclos.json](orbit-ia-analise-ciclos.json) | Classifica cada ciclo CLOSED: venda? valor? resumo. | a cada 1h |
-| [orbit-ia-relatorio.json](orbit-ia-relatorio.json) | Resumo do dono (vendas × conversas) por farmácia. | diário 08h |
+| [orbit-ia-analise-ciclos.json](orbit-ia-analise-ciclos.json) | Classifica cada ciclo CLOSED: venda? valor? resumo. | Webhook `orbit-ia-analise-ciclos` |
+| [orbit-ia-relatorio.json](orbit-ia-relatorio.json) | Resumo do dono (vendas × conversas) por farmácia. | Webhook `orbit-ia-relatorio` |
 
 A chave do Claude vive **na credencial do n8n** — nunca no app.
+
+> **Relatório pode ficar 1 sessão atrás:** os 2 webhooks disparam em paralelo no login, então
+> a narrativa reflete as análises da sessão anterior. O gate de staleness mantém correto (só
+> não "ao vivo"). Se quiser same-session, encadeie: no fim do workflow de ciclos, um nó HTTP
+> chamando o webhook do relatório.
 
 ---
 
@@ -27,11 +41,20 @@ No deploy do backend: `npx prisma migrate deploy` (ou rodar o SQL da migration n
 compartilhada do Railway). Sem isso, os endpoints respondem 500.
 
 ### 2. Definir `IA_INGEST_SECRET` no serviço do site (Railway → ReceptaOrbit)
-Gere um segredo forte e use o **mesmo valor** na credencial do n8n (passo 4).
+Gere um segredo forte e use o **mesmo valor** na credencial do n8n (passo 4). Esse mesmo
+segredo autentica os dois sentidos: app→n8n (header auth do webhook) e n8n→app (endpoints).
 ```
 openssl rand -base64 48
 ```
 Em produção os endpoints recusam (503) sem essa env.
+
+### 3. Definir `IA_TRIGGER_WEBHOOK_URL` no serviço do site (após ativar os workflows)
+Lista separada por vírgula com as **duas** URLs de webhook de produção do n8n (passo *Importar
+e testar*). O login dispara ambas com `{ pharmacyId }`. **Sem essa env, o disparo é no-op** —
+nenhuma análise roda (útil em dev/local; em produção, defina).
+```
+IA_TRIGGER_WEBHOOK_URL=https://n8n-production-cf2c1.up.railway.app/webhook/orbit-ia-analise-ciclos,https://n8n-production-cf2c1.up.railway.app/webhook/orbit-ia-relatorio
+```
 
 ---
 
@@ -71,16 +94,21 @@ Os nós HTTP já referenciam esses nomes; na importação, selecione/crie cada u
 
 ## Importar e testar
 
-1. **Importar** cada `.json` (Workflows → ⋯ → *Import from File*).
-2. Confirme que a **URL base** dos nós HTTP do Orbit é a do seu site
+1. **Importar** cada `.json` (Workflows → ⋯ → *Import from File*). Cada um agora entra por um
+   nó **Webhook (login)** (POST), não mais por Schedule.
+2. No nó **Webhook (login)** de cada workflow, confirme que **Authentication = Header Auth**
+   apontando para a credencial `Orbit IA x-ia-secret` (mesma do passo 4). Assim só o app,
+   que envia `x-ia-secret`, consegue disparar.
+3. Confirme que a **URL base** dos nós HTTP do Orbit é a do seu site
    (default: `https://receptaorbit-production.up.railway.app`). Ajuste se o domínio for outro.
-3. **Teste manual** (*Execute Workflow*) com o de análise:
-   - `GET ciclos pendentes` deve voltar `{ ok:true, count, cycles }`.
-   - `Claude — classificar` roda 1× por ciclo.
-   - `POST resultados` grava → confira em **/vendas** e no **detalhe da conversa** (card
-     "Análise da conversa").
-4. Rode o de relatório uma vez → **/vendas** mostra o "Resumo do período".
-5. **Ative** os workflows (toggle *Active*) para o cron passar a rodar sozinho.
+4. **Ative** os dois workflows (toggle *Active*). Só ativo o webhook de **produção** existe;
+   copie a *Production URL* de cada nó Webhook (formato
+   `.../webhook/orbit-ia-analise-ciclos` e `.../webhook/orbit-ia-relatorio`).
+5. Cole as duas em `IA_TRIGGER_WEBHOOK_URL` (vírgula-separadas) no serviço do site e redeploy.
+6. **Teste**: faça **login** no app com um usuário de farmácia com ciclos CLOSED. Em segundos
+   o n8n executa (veja em *Executions*): `GET pendentes` → `Claude` → `POST`. Confira em
+   **/vendas** e no **detalhe da conversa** (card "Análise da conversa") + "Resumo do período".
+   - Teste avulso sem login: `curl -X POST -H "x-ia-secret: <segredo>" -H "content-type: application/json" -d '{"pharmacyId":"<id>"}' <webhook-url>`.
 
 ---
 
@@ -104,6 +132,10 @@ faz `upsert` por `(cycleId, pharmacyId)`, então re-rodar o workflow não duplic
 
 - **Modelo**: editar `MODEL` nos nós *Code* (default `claude-haiku-4-5-20251001`; mais barato para
   classificação em escala. Trocar por `claude-sonnet-5` se precisar de mais qualidade).
-- **Cadência**: editar o nó *Schedule Trigger*.
+- **Disparo**: agora é por login (webhook), não cron. O app dispara em [`triggerPharmacyAnalysis`](../../frontend/src/server/ia/trigger.ts)
+  (throttle 30 min/farmácia). Para voltar a ter um cron de rede-de-segurança, adicione um
+  Schedule Trigger que faça POST no próprio webhook **sem** `pharmacyId` (varre todas).
 - **Lote**: `?limit=` no `GET ciclos pendentes` controla quantos ciclos por execução.
+- **Escopo**: `?pharmacyId=` (injetado pelo webhook via `{{ $json.body.pharmacyId }}`) limita à
+  farmácia de quem logou; vazio = todas (retrocompatível).
 - **Regenerar os JSON**: este diretório foi gerado por script; os arquivos são editáveis à mão.

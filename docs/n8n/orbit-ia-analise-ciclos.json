@@ -3,28 +3,32 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 1
-            }
-          ]
-        }
+        "httpMethod": "POST",
+        "path": "orbit-ia-analise-ciclos",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
       },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
       "position": [
         0,
         0
       ],
-      "id": "Agendar_1h_",
-      "name": "Agendar (1h)"
+      "id": "Webhook_login_ciclos",
+      "name": "Webhook (login)",
+      "webhookId": "orbit-ia-analise-ciclos",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Orbit IA x-ia-secret"
+        }
+      }
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/pending?limit=20",
+        "url": "=https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/pending?limit=20&pharmacyId={{ $json.body.pharmacyId || '' }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -142,7 +146,7 @@
     }
   ],
   "connections": {
-    "Agendar (1h)": {
+    "Webhook (login)": {
       "main": [
         [
           {
