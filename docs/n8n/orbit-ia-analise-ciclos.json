@@ -28,7 +28,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/pending?limit=20&pharmacyId={{ $json.body.pharmacyId || '' }}",
+        "url": "=https://receptaorbit-production.up.railway.app/api/internal/ia/cycles/pending?limit=100&pharmacyId={{ $('Webhook (login)').first().json.body.pharmacyId || '' }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -143,6 +143,47 @@
           "name": "Orbit IA x-ia-secret"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-count-full",
+              "leftValue": "={{ $('GET ciclos pendentes').first().json.count }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "cond-loop-guard",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "Tem_mais_ciclos",
+      "name": "Tem mais?"
     }
   ],
   "connections": {
@@ -199,6 +240,29 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "POST resultados": {
+      "main": [
+        [
+          {
+            "node": "Tem mais?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem mais?": {
+      "main": [
+        [
+          {
+            "node": "GET ciclos pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

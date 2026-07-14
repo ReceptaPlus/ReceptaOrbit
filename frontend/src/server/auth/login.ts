@@ -8,7 +8,6 @@ import { db } from "@/server/db";
 import { verifyPassword, hashPassword } from "./password";
 import { createSession, destroySession } from "./session";
 import { hitRateLimit, clearRateLimit } from "@/lib/rate-limit";
-import { triggerPharmacyAnalysis } from "@/server/ia/trigger";
 
 const LOGIN_MAX = 10; // tentativas
 const LOGIN_WINDOW_MS = 10 * 60 * 1000; // por 10 min, por IP+email
@@ -90,11 +89,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     onboardingRequired: user.mustChangePassword || (!membership && !staff),
   });
 
-  // Análise de IA sob demanda: dispara o n8n só para a farmácia de quem entrou
-  // (substitui o cron cross-tenant). Fire-and-forget interno — não quebra o login.
-  if (membership && pharmacyId) {
-    await triggerPharmacyAnalysis(pharmacyId);
-  }
+  // A análise de IA NÃO é disparada aqui: o gatilho vive na ENTRADA do app (dashboard layout),
+  // travado por cooldown durável (24h/farmácia). Assim vale para login novo E sessão persistida
+  // (JWT 7d) — dados atualizam ao usar o app, não só ao re-autenticar. Ver server/ia/trigger.ts.
 
   // Staff (sem farmácia) vai pro /admin; membros vão pro dashboard do tenant.
   redirect(membership ? "/dashboard" : staff ? "/admin" : "/dashboard");

@@ -135,6 +135,7 @@ model Pharmacy {
   aiAutoConfirmThreshold Float          @default(0.85) @map("ai_auto_confirm_threshold")
   aiSummaryLanguage      String         @default("pt-BR") @map("ai_summary_language")
   agenteClientId         String?        @map("agente_client_id") // FK lógica -> Client.id no banco do Agente-Meta-Ads (cross-DB, sem constraint)
+  lastAiRunAt            DateTime?      @map("last_ai_run_at") @db.Timestamptz // cooldown do disparo de IA (trava atômica por farmácia; substitui throttle em memória)
   createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 

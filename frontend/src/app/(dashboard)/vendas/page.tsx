@@ -1,12 +1,17 @@
 import Link from "next/link";
-import { listSalesVM, getLatestSalesReportVM } from "@/server/ia/queries";
+import { listSalesVM, getLatestSalesReportVM, countPendingCycles } from "@/server/ia/queries";
+import { AnalysisStatus } from "./analysis-status";
 
 /* Vendas — alimentado pela IA (análise das conversas roda no n8n; o app só exibe).
    Mostra o relatório do período (narrativa pro dono + métricas vendas×conversas) e a
    lista de vendas identificadas. Sem análise ainda → estado "aguardando IA". */
 
 export default async function VendasPage() {
-  const [sales, report] = await Promise.all([listSalesVM(), getLatestSalesReportVM()]);
+  const [sales, report, pendingCount] = await Promise.all([
+    listSalesVM(),
+    getLatestSalesReportVM(),
+    countPendingCycles(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -16,6 +21,9 @@ export default async function VendasPage() {
           Vendas identificadas pela IA a partir das conversas do WhatsApp.
         </p>
       </header>
+
+      {/* Aviso não-bloqueante + auto-refresh enquanto a IA está processando o backlog */}
+      <AnalysisStatus pendingCount={pendingCount} />
 
       {/* Relatório do dono (narrativa + métricas do período) */}
       {report ? (

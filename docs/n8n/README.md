@@ -1,23 +1,30 @@
 # IA de conversas — n8n + endpoints internos
 
 A análise das conversas roda **fora do app**, num **n8n** dedicado. Desde a virada de custo,
-o disparo é **por login** (não mais cron): quando um usuário entra, o app chuta o webhook do
-n8n **só para a farmácia dele**. Farmácia sem login = zero custo de Claude. O app só **serve
-as conversas** e **persiste o resultado**; o n8n **nunca** acessa a Evolution/Digisac.
+o disparo é **por entrada no app** (não mais cron): quando um usuário de farmácia abre o app
+(dashboard layout — login novo OU sessão persistida), o app chuta o webhook do n8n **só para a
+farmácia dele**. Farmácia sem uso = zero custo de Claude. O app só **serve as conversas** e
+**persiste o resultado**; o n8n **nunca** acessa a Evolution/Digisac.
 
 ```
-Login (app) → Webhook n8n (por pharmacyId) → GET pendentes → Claude (nó HTTP) → POST resultado → (telas /vendas e detalhe)
+Entrada no app → Webhook n8n (por pharmacyId) → GET pendentes → Claude (nó HTTP) → POST resultado → (telas /vendas e detalhe)
 ```
 
-Por que login em vez de cron:
+Por que entrada-no-app em vez de cron:
 - **Análise de ciclos** é idempotente (1×/ciclo, `upsert`); o cron horário só adiava, não
-  economizava. No login, farmácias inativas nunca são analisadas.
+  economizava. Farmácias inativas nunca são analisadas.
 - **Relatório** era o vazamento real: o cron diário regerava a narrativa de toda farmácia
   ativa todo dia. Agora só regera quando há **análise nova** desde o último relatório
   (gate de staleness em `fetchReportInputs`).
-- **Throttle**: o app não redispara a mesma farmácia se já disparou < 30 min (in-memory).
+- **Cooldown DURÁVEL (não mais throttle em memória)**: o disparo vive no dashboard layout, não
+  no `loginAction` — assim vale para sessão persistida (JWT 7d), não só re-login. Uma trava
+  atômica em banco (`pharmacies.last_ai_run_at`, `updateMany` condicional) garante **no máx. 1
+  disparo por farmácia a cada 24h**, entre réplicas e sobrevivendo a deploy. Ver
+  [`triggerPharmacyAnalysis`](../../frontend/src/server/ia/trigger.ts). Isso resolve os dois
+  extremos: múltiplos logins **não** viram múltiplas análises, e a análise **não** fica presa a
+  1×/sessão de 7 dias.
 
-Dois workflows (importáveis nesta pasta), ambos disparados pelo **mesmo login**:
+Dois workflows (importáveis nesta pasta), ambos disparados pela **mesma entrada no app**:
 
 | Arquivo | O que faz | Trigger |
 |---|---|---|
@@ -26,19 +33,20 @@ Dois workflows (importáveis nesta pasta), ambos disparados pelo **mesmo login**
 
 A chave do Claude vive **na credencial do n8n** — nunca no app.
 
-> **Relatório pode ficar 1 sessão atrás:** os 2 webhooks disparam em paralelo no login, então
-> a narrativa reflete as análises da sessão anterior. O gate de staleness mantém correto (só
-> não "ao vivo"). Se quiser same-session, encadeie: no fim do workflow de ciclos, um nó HTTP
-> chamando o webhook do relatório.
+> **Relatório pode ficar 1 janela atrás:** os 2 webhooks disparam em paralelo, então a narrativa
+> reflete as análises da janela anterior. O gate de staleness mantém correto (só não "ao vivo").
+> Se quiser same-window, encadeie: no fim do workflow de ciclos, um nó HTTP chamando o webhook
+> do relatório.
 
 ---
 
 ## Pré-requisitos (uma vez)
 
-### 1. Aplicar a migration no banco
-A migration `20260629120000_ia_analysis` cria `cycle_analyses` e `sales_reports`.
-No deploy do backend: `npx prisma migrate deploy` (ou rodar o SQL da migration na DB
-compartilhada do Railway). Sem isso, os endpoints respondem 500.
+### 1. Aplicar as migrations no banco
+- `20260629120000_ia_analysis` cria `cycle_analyses` e `sales_reports`.
+- `20260714120000_pharmacy_ai_cooldown` adiciona `pharmacies.last_ai_run_at` (trava de cooldown
+  do disparo). **Sem ela o disparo quebra** (o app grava nessa coluna ao reivindicar a janela).
+No deploy do backend: `npx prisma migrate deploy` (ou rodar o SQL na DB compartilhada do Railway).
 
 ### 2. Definir `IA_INGEST_SECRET` no serviço do site (Railway → ReceptaOrbit)
 Gere um segredo forte e use o **mesmo valor** na credencial do n8n (passo 4). Esse mesmo
@@ -132,10 +140,15 @@ faz `upsert` por `(cycleId, pharmacyId)`, então re-rodar o workflow não duplic
 
 - **Modelo**: editar `MODEL` nos nós *Code* (default `claude-haiku-4-5-20251001`; mais barato para
   classificação em escala. Trocar por `claude-sonnet-5` se precisar de mais qualidade).
-- **Disparo**: agora é por login (webhook), não cron. O app dispara em [`triggerPharmacyAnalysis`](../../frontend/src/server/ia/trigger.ts)
-  (throttle 30 min/farmácia). Para voltar a ter um cron de rede-de-segurança, adicione um
-  Schedule Trigger que faça POST no próprio webhook **sem** `pharmacyId` (varre todas).
-- **Lote**: `?limit=` no `GET ciclos pendentes` controla quantos ciclos por execução.
+- **Disparo**: por entrada no app (webhook), não cron. O app dispara em [`triggerPharmacyAnalysis`](../../frontend/src/server/ia/trigger.ts),
+  travado por cooldown durável de **24h/farmácia** (constante `COOLDOWN_MS`; ajuste ali para mudar
+  frescor × custo). Para voltar a ter um cron de rede-de-segurança, adicione um Schedule Trigger
+  que faça POST no próprio webhook **sem** `pharmacyId` (varre todas).
+- **Lote + drenagem**: `?limit=100` no `GET ciclos pendentes` por passada. O workflow de ciclos
+  tem um **loop** (nó *Tem mais?* → volta pro GET) que drena TODO o backlog em **uma** execução,
+  não 100/dia. Guard: para quando o lote vem < 100 ou após 50 iterações (`$runIndex`). A primeira
+  análise de uma farmácia com histórico longo = 1 execução mais demorada (minutos, em segundo
+  plano — ninguém espera; a tela /vendas mostra "Analisando N conversas…" e atualiza sozinha).
 - **Escopo**: `?pharmacyId=` (injetado pelo webhook via `{{ $json.body.pharmacyId }}`) limita à
   farmácia de quem logou; vazio = todas (retrocompatível).
 - **Regenerar os JSON**: este diretório foi gerado por script; os arquivos são editáveis à mão.

@@ -215,6 +215,16 @@ export async function listSalesVM(): Promise<SaleRowVM[]> {
   }));
 }
 
+/* Quantas conversas encerradas ainda aguardam análise da IA. A tela /vendas mostra um aviso
+   "analisando..." + auto-refresh enquanto isto for > 0. Só ciclos COM mensagens (os vazios
+   nunca entram na fila — ver fetchPendingCycles — então não devem contar). Escopo de tenant. */
+export async function countPendingCycles(): Promise<number> {
+  const { pharmacyId } = await getAuthorizedPharmacyContext();
+  return db.conversationCycle.count({
+    where: { pharmacyId, status: "CLOSED", analysis: { is: null }, messages: { some: {} } },
+  });
+}
+
 /* Relatório mais recente do dono (tela /vendas). Null = IA ainda não gerou. */
 export async function getLatestSalesReportVM(): Promise<SalesReportVM | null> {
   const { pharmacyId } = await getAuthorizedPharmacyContext();

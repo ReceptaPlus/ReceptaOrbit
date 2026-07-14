@@ -1,20 +1,24 @@
 import "server-only";
-import { hitRateLimit } from "@/lib/rate-limit";
+import { db } from "@/server/db";
 
-/* Dispara a análise de IA (n8n) sob demanda — chamado no login, escopado por farmácia.
-   Substitui o cron cross-tenant: uma farmácia só é analisada quando alguém dela entra,
-   então farmácias inativas não geram custo de Claude. O app continua NÃO rodando LLM —
-   só chuta o webhook do n8n, que faz GET pendentes → Claude → POST resultado.
+/* Dispara a análise de IA (n8n) sob demanda — chamado na ENTRADA do app (dashboard layout),
+   escopado por farmácia. Substitui o cron cross-tenant: uma farmácia só é analisada quando
+   alguém dela usa o app, então farmácias inativas não geram custo de Claude. O app continua
+   NÃO rodando LLM — só chuta o webhook do n8n, que faz GET pendentes → Claude → POST resultado.
 
-   Robustez: fire-and-forget com timeout curto. Falha aqui (n8n fora, timeout, rede)
-   NUNCA quebra o login — a análise apenas espera o próximo login. Throttle em memória
-   evita que uma rajada de logins da mesma farmácia vire N execuções do n8n. */
+   Trava de cooldown DURÁVEL (não mais throttle em memória): um UPDATE condicional atômico
+   reivindica a janela de 24h. O Postgres garante um único vencedor por janela POR FARMÁCIA —
+   entre réplicas e sobrevivendo a deploy/restart. Então N logins/aberturas do app (mesmo em
+   instâncias diferentes) resultam em NO MÁXIMO 1 disparo a cada 24h. É o que torna
+   "múltiplos logins → 1 análise" uma garantia, não um best-effort.
 
-const THROTTLE_MS = 30 * 60 * 1000; // no máx. 1 disparo por farmácia a cada 30 min
-const TIMEOUT_MS = 2000; // teto de latência somada ao login em caso de n8n lento/fora
+   Fire-and-forget: falha aqui (n8n fora, timeout) NUNCA quebra a navegação. O app roda em
+   servidor persistente (Railway), então o fetch não-aguardado completa. Reivindica-ANTES-de-
+   disparar (at-most-once): se o n8n estiver fora, a janela é consumida e a análise espera a
+   próxima — troca deliberada a favor de custo (nunca dispara demais). */
 
-/* IA_TRIGGER_WEBHOOK_URL: 1+ URLs de webhook do n8n separadas por vírgula (análise de
-   ciclos e relatório do dono). Todas recebem o mesmo POST { pharmacyId }, em paralelo. */
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 1 disparo por farmácia a cada 24h
+
 export async function triggerPharmacyAnalysis(pharmacyId: string): Promise<void> {
   const urls = (process.env.IA_TRIGGER_WEBHOOK_URL ?? "")
     .split(",")
@@ -22,12 +26,29 @@ export async function triggerPharmacyAnalysis(pharmacyId: string): Promise<void>
     .filter(Boolean);
   if (urls.length === 0) return; // sem webhook configurado (dev/local): no-op silencioso
 
-  // Throttle por farmácia: 10 logins seguidos não viram 10 execuções do n8n.
-  if (!hitRateLimit(`ia-trigger:${pharmacyId}`, 1, THROTTLE_MS).ok) return;
+  // Reivindica a janela de forma ATÔMICA: só quem consegue mover last_ai_run_at dispara.
+  // updateMany com WHERE condicional é uma única UPDATE no Postgres → sem corrida, sem
+  // depender de memória do processo. count === 0 = outra requisição/réplica já disparou.
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - COOLDOWN_MS);
+  let claimed = 0;
+  try {
+    const res = await db.pharmacy.updateMany({
+      where: {
+        id: pharmacyId,
+        OR: [{ lastAiRunAt: null }, { lastAiRunAt: { lt: cutoff } }],
+      },
+      data: { lastAiRunAt: now },
+    });
+    claimed = res.count;
+  } catch {
+    return; // erro de DB não deve quebrar a navegação; tenta de novo na próxima entrada.
+  }
+  if (claimed === 0) return; // já disparado dentro da janela de 24h
 
   const secret = process.env.IA_INGEST_SECRET?.trim();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), 2000);
   try {
     await Promise.allSettled(
       urls.map((url) =>
@@ -44,7 +65,7 @@ export async function triggerPharmacyAnalysis(pharmacyId: string): Promise<void>
       ),
     );
   } catch {
-    // n8n fora / timeout / rede: ignora de propósito — roda no próximo login.
+    // n8n fora / timeout / rede: ignora de propósito — roda na próxima janela.
   } finally {
     clearTimeout(timer);
   }

@@ -4,6 +4,7 @@ import { BottomTabs } from "@/components/bottom-tabs";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { requireSession } from "@/server/auth/dal";
 import { exitImpersonationAction } from "@/server/auth/impersonation";
+import { triggerPharmacyAnalysis } from "@/server/ia/trigger";
 import { db } from "@/server/db";
 import { can } from "@/modules/tenancy/authz";
 import { countUnreadConversations } from "@/modules/conversations/queries";
@@ -16,6 +17,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // AppLayout é EXCLUSIVO de usuários de farmácia (tenant). Identidade de plataforma
   // (sem pharmacyId) não pertence ao app do tenant → vai para a área /admin.
   if (!session.pharmacyId) redirect("/admin");
+
+  // Entrada no app = sinal de "farmácia em uso" → dispara a análise de IA (n8n), fire-and-forget
+  // e travado por cooldown de 24h dentro da função (no máx. 1 disparo/dia/farmácia, mesmo com
+  // N aberturas ou réplicas). NÃO dispara em impersonação de suporte — só membro real gera custo.
+  if (!session.impersonating) void triggerPharmacyAnalysis(session.pharmacyId);
 
   const [user, pharmacy, unreadConversations] = await Promise.all([
     db.user.findUnique({ where: { id: session.userId }, select: { name: true, email: true } }),
