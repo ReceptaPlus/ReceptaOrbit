@@ -1,13 +1,17 @@
+// Fuso fixo do app (Brasil). Sem isto, formatação em Server Component usa o TZ do runtime
+// (Railway = UTC) → horários 3h adiantados. Pharmacy.timezone existe p/ um futuro multi-fuso.
+const APP_TZ = "America/Sao_Paulo";
+
 export function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: APP_TZ });
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: APP_TZ });
 }
 
 export function formatPercent(value: number): string {
