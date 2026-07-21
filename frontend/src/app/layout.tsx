@@ -31,7 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${montserrat.variable} ${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      {/* suppressHydrationWarning: extensões de navegador (ex.: ColorZilla → cz-shortcut-listen)
+          injetam atributos no body antes da hidratação. Suprime só o atributo do próprio body. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>
           {children}
           <Toaster position="bottom-right" />

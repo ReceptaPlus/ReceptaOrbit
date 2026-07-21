@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { getAuthorizedPharmacyContext } from "@/server/auth/dal";
 import { can } from "@/modules/tenancy/authz";
 import { writeAudit } from "@/server/audit";
+import { UF_CODES } from "@/lib/geo/uf";
 import { pharmacySchema } from "./schemas";
 
 /* Ações de Configurações do tenant. Contexto de farmácia validado server-side;
@@ -29,19 +30,33 @@ export async function updatePharmacyAction(
     legalName: formData.get("legalName"),
     cnpj: formData.get("cnpj"),
     timezone: formData.get("timezone"),
+    city: formData.get("city") ?? undefined,
+    uf: formData.get("uf") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
 
+  // Município/UF são opcionais na edição: vazio → null. UF (se preenchida) precisa ser válida.
+  const city = parsed.data.city?.trim() ? parsed.data.city.trim() : null;
+  const uf = parsed.data.uf?.trim() ? parsed.data.uf.trim().toUpperCase() : null;
+  if (uf && !UF_CODES.includes(uf)) return { error: "Selecione uma UF válida." };
+
   const before = await db.pharmacy.findUnique({
     where: { id: ctx.pharmacyId },
-    select: { tradeName: true, legalName: true, cnpj: true, timezone: true },
+    select: { tradeName: true, legalName: true, cnpj: true, timezone: true, city: true, uf: true },
   });
 
   try {
     const after = await db.pharmacy.update({
       where: { id: ctx.pharmacyId },
-      data: parsed.data,
-      select: { tradeName: true, legalName: true, cnpj: true, timezone: true },
+      data: {
+        tradeName: parsed.data.tradeName,
+        legalName: parsed.data.legalName,
+        cnpj: parsed.data.cnpj,
+        timezone: parsed.data.timezone,
+        city,
+        uf,
+      },
+      select: { tradeName: true, legalName: true, cnpj: true, timezone: true, city: true, uf: true },
     });
     await writeAudit({
       pharmacyId: ctx.pharmacyId,

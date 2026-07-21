@@ -22,4 +22,6 @@ export interface Pharmacy {
   legalName: string;
   cnpj: string;
   timezone: string;
+  city: string | null;
+  uf: string | null;
 }

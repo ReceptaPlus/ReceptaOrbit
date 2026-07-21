@@ -78,5 +78,25 @@ export const ROUTES = {
   revisao: "/vendas/revisao",
   clientes: "/clientes",
   cliente: (id: string) => `/clientes/${id}`,
+  simulador: "/simulador",
   configuracoes: "/configuracoes/usuarios",
+} as const;
+
+/* Benchmarks do Simulador (V1) — PLACEHOLDERS a calibrar com dado do setor / agregado
+   macro (aba Tendências, fase futura). Dinheiro em R$ (reais); taxas em 0..1. */
+export const SIMULATOR_BENCHMARKS = {
+  cplMax: 25, // R$/lead — acima disso = "CPL caro"
+  conversionMin: 0.15, // 15%
+  ticketMin: 80, // R$
+  retentionMin: 0.3, // 30% de recompra mensal
+} as const;
+
+/* Defaults quando falta dado real (sem Agente configurado / sem relatório da IA).
+   Mantêm o simulador utilizável como calculadora manual até os dados chegarem. */
+export const SIMULATOR_DEFAULTS = {
+  monthlyInvestment: 3000, // R$/mês
+  cpl: 20, // R$/lead
+  conversionRate: 0.2, // 20%
+  ticket: 120, // R$
+  retentionRate: 0.3, // 30%
 } as const;

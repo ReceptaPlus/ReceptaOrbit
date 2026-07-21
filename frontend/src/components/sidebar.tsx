@@ -9,6 +9,7 @@ import {
   IconLogout,
   IconMore,
   IconSettings,
+  IconTrend,
   IconUsers,
 } from "@/components/icons";
 import { logoutAction } from "@/server/auth/login";
@@ -18,6 +19,11 @@ const WORKSPACE = [
   { href: "/conversas", label: "Conversas", icon: IconChat },
   { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
+] as const;
+
+// Inteligência — abas de dados/projeção do V1 (Simulador; Tendências/Criativos entram depois).
+const INTELLIGENCE = [
+  { href: "/simulador", label: "Simulador", icon: IconTrend },
 ] as const;
 
 const SYSTEM = [
@@ -34,52 +40,54 @@ export interface SidebarUser {
   unreadConversations?: number;
 }
 
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  exact,
+  badge,
+  pathname,
+}: {
+  href: string;
+  label: string;
+  icon: typeof IconDashboard;
+  exact?: boolean;
+  badge?: number;
+  pathname: string;
+}) {
+  const active = exact ? pathname === href : pathname.startsWith(href);
+  return (
+    <Link
+      href={href}
+      title={label}
+      aria-current={active ? "page" : undefined}
+      className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-small
+                  justify-center xl:justify-start transition-all duration-150 ${
+        active
+          ? "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+          : "text-sidebar-text hover:bg-white/[0.05] hover:text-white"
+      }`}
+    >
+      {active && (
+        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-brand-500 to-brand-400 shadow-[0_0_8px_rgba(212,67,44,0.6)]" />
+      )}
+      <Icon
+        size={18}
+        className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${active ? "text-brand-400" : ""}`}
+      />
+      <span className="hidden xl:block flex-1">{label}</span>
+      {badge != null && (
+        <span className="hidden xl:flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500/90 px-1.5 text-micro font-semibold text-white">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const unread = user.unreadConversations && user.unreadConversations > 0 ? user.unreadConversations : undefined;
-
-  function NavItem({
-    href,
-    label,
-    icon: Icon,
-    exact,
-    badge,
-  }: {
-    href: string;
-    label: string;
-    icon: typeof IconDashboard;
-    exact?: boolean;
-    badge?: number;
-  }) {
-    const active = exact ? pathname === href : pathname.startsWith(href);
-    return (
-      <Link
-        href={href}
-        title={label}
-        aria-current={active ? "page" : undefined}
-        className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-small
-                    justify-center xl:justify-start transition-all duration-150 ${
-          active
-            ? "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-            : "text-sidebar-text hover:bg-white/[0.05] hover:text-white"
-        }`}
-      >
-        {active && (
-          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-brand-500 to-brand-400 shadow-[0_0_8px_rgba(212,67,44,0.6)]" />
-        )}
-        <Icon
-          size={18}
-          className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${active ? "text-brand-400" : ""}`}
-        />
-        <span className="hidden xl:block flex-1">{label}</span>
-        {badge != null && (
-          <span className="hidden xl:flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500/90 px-1.5 text-micro font-semibold text-white">
-            {badge}
-          </span>
-        )}
-      </Link>
-    );
-  }
 
   return (
     <aside
@@ -144,8 +152,18 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             <NavItem
               key={item.href}
               {...item}
+              pathname={pathname}
               badge={item.href === "/conversas" ? unread : undefined}
             />
+          ))}
+        </div>
+
+        <p className="hidden xl:block px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+          Inteligência
+        </p>
+        <div className="space-y-1">
+          {INTELLIGENCE.map((item) => (
+            <NavItem key={item.href} {...item} pathname={pathname} />
           ))}
         </div>
 
@@ -154,9 +172,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
         </p>
         <div className="space-y-1">
           {SYSTEM.map((item) => (
-            <NavItem key={item.href} {...item} />
+            <NavItem key={item.href} {...item} pathname={pathname} />
           ))}
-          {user.canAdmin && <NavItem href="/admin" label="Admin Recepta" icon={IconMore} />}
+          {user.canAdmin && <NavItem href="/admin" label="Admin Recepta" icon={IconMore} pathname={pathname} />}
         </div>
       </nav>
 

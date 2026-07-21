@@ -15,6 +15,8 @@ export default async function AdminFarmaciasPage() {
         id: true,
         tradeName: true,
         cnpj: true,
+        city: true,
+        uf: true,
         plan: true,
         status: true,
         agenteClientId: true,
@@ -57,7 +59,14 @@ export default async function AdminFarmaciasPage() {
             ) : (
               pharmacies.map((p) => (
                 <tr key={p.id} className="border-b border-line-subtle transition-colors last:border-0 hover:bg-cream-alt/40">
-                  <td className="px-5 py-3.5 font-medium text-ink">{p.tradeName}</td>
+                  <td className="px-5 py-3.5 font-medium text-ink">
+                    {p.tradeName}
+                    {p.city && (
+                      <span className="mt-0.5 block text-micro font-normal text-muted">
+                        {p.city}{p.uf ? ` · ${p.uf}` : ""}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3.5 text-secondary" data-numeric>{p.cnpj}</td>
                   <td className="px-5 py-3.5">
                     <span className="inline-flex rounded-md bg-info-bg px-2 py-0.5 text-micro font-semibold text-info-text">{p.plan}</span>

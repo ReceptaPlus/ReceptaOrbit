@@ -42,6 +42,8 @@ export interface PharmacyVM {
   legalName: string;
   cnpj: string;
   timezone: string;
+  city: string | null;
+  uf: string | null;
 }
 
 /** Dados cadastrais da farmácia do tenant atual. */
@@ -49,7 +51,7 @@ export async function getPharmacyVM(): Promise<PharmacyVM> {
   const { pharmacyId } = await getAuthorizedPharmacyContext();
   return db.pharmacy.findUniqueOrThrow({
     where: { id: pharmacyId },
-    select: { tradeName: true, legalName: true, cnpj: true, timezone: true },
+    select: { tradeName: true, legalName: true, cnpj: true, timezone: true, city: true, uf: true },
   });
 }
 

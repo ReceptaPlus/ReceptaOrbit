@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createPharmacyAction, type AdminFormState } from "@/server/admin";
+import { UFS } from "@/lib/geo/uf";
 
 const initialState: AdminFormState = {};
 
@@ -23,6 +24,19 @@ export function CreatePharmacyForm() {
         <div>
           <label htmlFor="cnpj" className="label-premium">CNPJ</label>
           <input id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" required className="field-premium" />
+        </div>
+        <div>
+          <label htmlFor="city" className="label-premium">Cidade (município)</label>
+          <input id="city" name="city" placeholder="Ex.: São Paulo" required className="field-premium" />
+        </div>
+        <div>
+          <label htmlFor="uf" className="label-premium">UF</label>
+          <select id="uf" name="uf" required defaultValue="" className="field-premium">
+            <option value="" disabled>Selecione…</option>
+            {UFS.map((u) => (
+              <option key={u.code} value={u.code}>{u.code} — {u.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 

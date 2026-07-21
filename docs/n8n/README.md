@@ -61,7 +61,7 @@ Lista separada por vírgula com as **duas** URLs de webhook de produção do n8n
 e testar*). O login dispara ambas com `{ pharmacyId }`. **Sem essa env, o disparo é no-op** —
 nenhuma análise roda (útil em dev/local; em produção, defina).
 ```
-IA_TRIGGER_WEBHOOK_URL=https://n8n-production-cf2c1.up.railway.app/webhook/orbit-ia-analise-ciclos,https://n8n-production-cf2c1.up.railway.app/webhook/orbit-ia-relatorio
+IA_TRIGGER_WEBHOOK_URL=https://n8n-production-57ba.up.railway.app/webhook/orbit-ia-analise-ciclos,https://n8n-production-57ba.up.railway.app/webhook/orbit-ia-relatorio
 ```
 
 ---
@@ -70,7 +70,7 @@ IA_TRIGGER_WEBHOOK_URL=https://n8n-production-cf2c1.up.railway.app/webhook/orbit
 
 Serviço **n8n** criado no projeto *Recepta Orbit* (imagem oficial `n8nio/n8n`):
 
-- URL: **https://n8n-production-cf2c1.up.railway.app**
+- URL: **https://n8n-production-57ba.up.railway.app**
 - Volume persistente `n8n-volume` em `/home/node/.n8n` (guarda o SQLite + credenciais +
   a chave de criptografia auto-gerada). **Não apague o volume** — perde as credenciais.
 - Envs já setadas: `N8N_HOST`, `N8N_PORT=5678`, `N8N_PROTOCOL=https`, `WEBHOOK_URL`,
@@ -80,8 +80,9 @@ Primeiro acesso: abra a URL e **crie a conta de owner** (user management do n8n;
 fica exposto na internet — use senha forte). `N8N_ENCRYPTION_KEY` não foi fixada: o n8n gera
 e guarda no volume. Se quiser portabilidade entre ambientes, defina-a explícita (e nunca mude).
 
-> Os dois workflows não usam Webhook Trigger (só Schedule + HTTP de saída), então o n8n não
-> precisa receber tráfego de entrada além do próprio painel.
+> Os dois workflows usam **Webhook Trigger** (o app chuta na entrada, por `pharmacyId`), então o
+> n8n recebe tráfego de entrada nesses paths além do próprio painel. Webhooks protegidos por
+> Header Auth (`x-ia-secret`).
 
 ---
 

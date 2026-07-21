@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updatePharmacyAction, type PharmacyFormState } from "@/modules/settings/actions";
 import type { Pharmacy } from "@/modules/settings/types";
+import { UFS } from "@/lib/geo/uf";
 
 const initialState: PharmacyFormState = {};
 
@@ -30,6 +31,19 @@ export function FarmaciaForm({ initial, canEdit }: { initial: Pharmacy; canEdit:
         <div>
           <label htmlFor="timezone" className="label-premium">Fuso horário</label>
           <input id="timezone" name="timezone" defaultValue={initial.timezone} readOnly={!canEdit} required className="field-premium" />
+        </div>
+        <div>
+          <label htmlFor="city" className="label-premium">Cidade (município)</label>
+          <input id="city" name="city" defaultValue={initial.city ?? ""} placeholder="Ex.: São Paulo" readOnly={!canEdit} className="field-premium" />
+        </div>
+        <div>
+          <label htmlFor="uf" className="label-premium">UF</label>
+          <select id="uf" name="uf" defaultValue={initial.uf ?? ""} disabled={!canEdit} className="field-premium">
+            <option value="">—</option>
+            {UFS.map((u) => (
+              <option key={u.code} value={u.code}>{u.code} — {u.name}</option>
+            ))}
+          </select>
         </div>
 
         <div className="sm:col-span-2">

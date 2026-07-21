@@ -9,6 +9,7 @@ import { requireCan } from "@/server/auth/dal";
 import { generateInviteToken } from "@/server/auth/tokens";
 import { hashPassword } from "@/server/auth/password";
 import { writeAudit } from "@/server/audit";
+import { UF_CODES } from "@/lib/geo/uf";
 
 /* Senha temporária legível (10 chars, com letra E dígito; sem 0/O/1/l ambíguos). */
 function generateTempPassword(): string {
@@ -48,6 +49,8 @@ const pharmacySchema = z.object({
   tradeName: z.string().min(2, "Informe o nome fantasia"),
   legalName: z.string().min(2, "Informe a razão social"),
   cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, "CNPJ no formato 00.000.000/0000-00"),
+  city: z.string().min(2, "Informe a cidade da farmácia"),
+  uf: z.string().refine((v) => UF_CODES.includes(v), "Selecione a UF"),
 });
 
 export async function createPharmacyAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
@@ -56,12 +59,16 @@ export async function createPharmacyAction(_prev: AdminFormState, formData: Form
     tradeName: formData.get("tradeName"),
     legalName: formData.get("legalName"),
     cnpj: formData.get("cnpj"),
+    city: formData.get("city"),
+    uf: formData.get("uf"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
 
   const slug = `${slugify(parsed.data.tradeName)}-${randomBytes(2).toString("hex")}`;
   try {
-    const pharmacy = await db.pharmacy.create({ data: { ...parsed.data, slug } });
+    const pharmacy = await db.pharmacy.create({
+      data: { ...parsed.data, city: parsed.data.city.trim(), uf: parsed.data.uf.toUpperCase(), slug },
+    });
     await writeAudit({
       pharmacyId: pharmacy.id,
       actorUserId: session.userId,
@@ -69,7 +76,7 @@ export async function createPharmacyAction(_prev: AdminFormState, formData: Form
       action: "PHARMACY_CREATED",
       entityType: "Pharmacy",
       entityId: pharmacy.id,
-      after: { tradeName: pharmacy.tradeName, cnpj: pharmacy.cnpj },
+      after: { tradeName: pharmacy.tradeName, cnpj: pharmacy.cnpj, city: pharmacy.city, uf: pharmacy.uf },
     });
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") return { error: "CNPJ já cadastrado." };

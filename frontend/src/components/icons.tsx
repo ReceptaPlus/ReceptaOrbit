@@ -60,6 +60,33 @@ export function IconMore({ size = 18, className }: IconProps) {
   );
 }
 
+export function IconTrend({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M3 3a1 1 0 0 1 1 1v14a1 1 0 0 0 1 1h15a1 1 0 1 1 0 2H5a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Z" />
+      <rect x="6.5" y="12" width="3" height="5" rx="1" />
+      <rect x="11.5" y="9" width="3" height="8" rx="1" opacity=".6" />
+      <rect x="16.5" y="5.5" width="3" height="11.5" rx="1" />
+    </svg>
+  );
+}
+
+export function IconAlert({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M10.3 3.2a2 2 0 0 1 3.4 0l8.1 14A2 2 0 0 1 20.1 20H3.9a2 2 0 0 1-1.7-3l8.1-14Zm.7 5.8v4a1 1 0 1 0 2 0V9a1 1 0 1 0-2 0Zm1 8.5a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z" />
+    </svg>
+  );
+}
+
+export function IconPin({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2a7 7 0 0 0-7 7c0 4.6 5.4 10.6 6.3 11.5a1 1 0 0 0 1.4 0C13.6 19.6 19 13.6 19 9a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+    </svg>
+  );
+}
+
 export function IconLogout({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>

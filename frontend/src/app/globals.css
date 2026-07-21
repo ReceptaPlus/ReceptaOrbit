@@ -401,6 +401,56 @@ table, [data-numeric] {
 .btn-churn:active { transform: translateY(0); }
 .btn-churn:disabled { opacity: 0.5; pointer-events: none; }
 
+/* ── Range slider premium (Simulador) ────────────────────────────────────────
+   Trilho fino com preenchimento de marca até o thumb (--pct via inline style),
+   thumb circular com anel de foco. Cross-browser (webkit + firefox). */
+.slider-premium {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    90deg,
+    var(--color-brand-500) 0%,
+    var(--color-brand-400) var(--pct, 50%),
+    var(--color-neutral-200) var(--pct, 50%),
+    var(--color-neutral-200) 100%
+  );
+}
+.slider-premium::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: transparent; }
+.slider-premium::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--color-brand-500);
+  box-shadow: 0 1px 4px rgba(10, 13, 12, 0.18);
+  transition: transform 0.12s var(--ease-out-soft), box-shadow 0.12s var(--ease-out-soft);
+}
+.slider-premium:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.slider-premium:active::-webkit-slider-thumb { transform: scale(1.06); box-shadow: var(--shadow-focus); }
+.slider-premium:focus-visible::-webkit-slider-thumb { box-shadow: var(--shadow-focus); }
+.slider-premium::-moz-range-track { height: 6px; border-radius: 999px; background: var(--color-neutral-200); }
+.slider-premium::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--color-brand-500); }
+.slider-premium::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--color-brand-500);
+  box-shadow: 0 1px 4px rgba(10, 13, 12, 0.18);
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .slider-premium::-webkit-slider-thumb { transition: none; }
+}
+
 /* Skeleton shimmer */
 @keyframes shimmer { 100% { background-position: -200% 0; } }
 .skeleton {

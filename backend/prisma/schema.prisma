@@ -129,6 +129,8 @@ model Pharmacy {
   legalName              String         @map("legal_name")
   cnpj                   String         @unique
   slug                   String         @unique
+  city                   String?        // município da farmácia (informado na criação) — contexto p/ Simulador
+  uf                     String?        // UF (sigla, 2 letras) — base p/ análise regional futura
   timezone               String         @default("America/Sao_Paulo")
   plan                   PlanType       @default(START)
   status                 PharmacyStatus @default(ACTIVE)

@@ -7,6 +7,7 @@ import {
   IconChat,
   IconDashboard,
   IconMore,
+  IconTrend,
   IconUsers,
 } from "@/components/icons";
 
@@ -15,6 +16,7 @@ const TABS = [
   { href: "/conversas", label: "Conversas", icon: IconChat },
   { href: "/vendas", label: "Vendas", icon: IconCart },
   { href: "/clientes", label: "Clientes", icon: IconUsers },
+  { href: "/simulador", label: "Simulador", icon: IconTrend },
   { href: "/configuracoes", label: "Mais", icon: IconMore },
 ];
 

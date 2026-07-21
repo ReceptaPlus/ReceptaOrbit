@@ -16,7 +16,9 @@ import { ROUTES } from "@/lib/constants";
 const PAGES = [
   { label: "Visão Geral", href: ROUTES.dashboard },
   { label: "Conversas", href: ROUTES.conversas },
+  { label: "Vendas", href: ROUTES.vendas },
   { label: "Clientes", href: ROUTES.clientes },
+  { label: "Simulador", href: ROUTES.simulador },
   { label: "Configurações", href: ROUTES.configuracoes },
 ];
 

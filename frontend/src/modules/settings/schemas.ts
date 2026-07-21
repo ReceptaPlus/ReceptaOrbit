@@ -11,6 +11,8 @@ export const pharmacySchema = z.object({
   legalName: z.string().min(2, "Informe a razão social"),
   cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, "CNPJ no formato 00.000.000/0000-00"),
   timezone: z.string(),
+  city: z.string().max(120).optional(), // município (opcional na edição; validação de vazio no action)
+  uf: z.string().max(2).optional(), // UF — validada contra a lista no action
 });
 
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
